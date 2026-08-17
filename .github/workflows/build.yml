@@ -1,0 +1,46 @@
+name: build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Prepare SDK placeholder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path public/foxit-lib | Out-Null
+          Set-Content public/foxit-lib/.keep ''
+          @"
+          VITE_FOXIT_LICENSE_SN=dummy
+          VITE_FOXIT_LICENSE_KEY=dummy
+          "@ | Set-Content .env
+        # 真实 CI 需自行注入 SDK 与 License；此处仅验证前端/Electron 构建链路可编译
+      - name: Typecheck / Build (skip pack without real SDK)
+        run: npx vue-tsc --noEmit
+        continue-on-error: true
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npx vue-tsc --noEmit
+        continue-on-error: true

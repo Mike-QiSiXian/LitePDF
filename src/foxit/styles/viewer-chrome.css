@@ -1,0 +1,451 @@
+/* Foxit 查看器顶栏三区布局 */
+.litepdf-pdfui,
+.litepdf-pdfui .litepdf-root,
+.litepdf-pdfui webpdf,
+.litepdf-pdfui .fv__ui-webpdf {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* 主体横排：侧栏不抢宽，viewer 吃剩余宽度 */
+.litepdf-pdfui .fv__ui-body {
+  display: flex !important;
+  flex-direction: row !important;
+  flex: 1 1 auto;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden;
+}
+
+.litepdf-pdfui .fv__ui-pdfviewer,
+.litepdf-pdfui viewer,
+.litepdf-pdfui [name='pdf-viewer'] {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+}
+
+.litepdf-topbar {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr);
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 10px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  /* toolbar 默认 line-height:0，会把文件名文字压没 */
+  line-height: normal;
+  overflow: visible;
+}
+
+.litepdf-topbar-left,
+.litepdf-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: visible;
+}
+
+.litepdf-topbar-right {
+  justify-content: flex-end;
+  position: relative;
+  z-index: 20;
+}
+
+.litepdf-topbar-center {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  position: static !important;
+  width: auto !important;
+  flex: none !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.litepdf-topbar-center .fv__ui-gtab,
+.litepdf-topbar-center [component-type='gtab'] {
+  min-width: 56px;
+  justify-content: center;
+}
+
+.litepdf-filename {
+  min-width: 0;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 32px;
+  color: #1f2329;
+}
+
+/* 自定义图标按钮容器样式（业务组件为 xbutton，逻辑走 @controller） */
+.litepdf-topbar .litepdf-icon-btn {
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: 6px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.litepdf-topbar .litepdf-icon-btn:hover {
+  background: #f3f4f6;
+}
+
+.litepdf-toolbar-shell.fv__ui-toolbar,
+.litepdf-toolbar-shell {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-shrink: 0;
+  background: #fff;
+  line-height: normal;
+  overflow: visible !important;
+}
+
+.litepdf-tool-paddle {
+  border-bottom: 1px solid #e5e7eb;
+  background: #fafafa;
+}
+
+/* 主页 / 注释 paddle：内容居中，仅保留图标以节省空间 */
+.litepdf-tool-paddle .fv__ui-paddle-content-container {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+}
+
+.litepdf-tool-paddle .fv__ui-paddle-content {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  width: auto !important;
+  margin: 0 auto;
+  gap: 4px;
+}
+
+.litepdf-tool-paddle .fv__ui-grouplist,
+.litepdf-tool-paddle [component-type='group-list'] {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center;
+  align-items: center;
+  width: auto !important;
+  margin: 0 auto;
+}
+
+.litepdf-tool-paddle .fv__ui-grouplist-item,
+.litepdf-tool-paddle [component-type='group'] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 隐藏 ribbon / 按钮文案，只留图标 */
+.litepdf-tool-paddle .fx-ribbon-item-text,
+.litepdf-tool-paddle .fv__ui-button-text,
+.litepdf-tool-paddle .fv__ui-dropdown-toggler-text,
+.litepdf-tool-paddle .fv__ui-ribbon-text {
+  display: none !important;
+}
+
+.litepdf-tool-paddle .fx-ribbon-item,
+.litepdf-tool-paddle .fv__ui-button,
+.litepdf-tool-paddle .fv__ui-dropdown {
+  min-width: 0 !important;
+}
+
+.litepdf-tool-paddle .fx-ribbon-item-text {
+  min-width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  font-size: 0 !important;
+}
+
+/* 去文案后压缩 paddle 高度 */
+.litepdf-tool-paddle .fv__ui-paddle,
+.litepdf-tool-paddle .fv__ui-paddle-content,
+.litepdf-tool-paddle .fv__ui-paddle-content-container {
+  height: 44px !important;
+  max-height: 44px !important;
+  min-height: 44px !important;
+}
+
+.litepdf-tool-paddle .fx-ribbon-item {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 顶栏侧栏按钮：展开态高亮 */
+.litepdf-topbar .litepdf-icon-btn.litepdf-sidebar-btn-active,
+.litepdf-topbar .litepdf-icon-btn.active {
+  background: #eef2ff;
+}
+
+/* 自定义侧栏图标占位（具体 background-image 由 sidebar-icons.ts 注入） */
+.litepdf-topbar .litepdf-icon-btn .litepdf-icon-sidebar-expand,
+.litepdf-topbar .litepdf-icon-btn .litepdf-icon-sidebar-collapse {
+  width: 16px;
+  height: 16px;
+}
+
+/**
+ * fv__ui-sidebar-dragger：侧栏右侧拖拽条，用于调整侧栏宽度。
+ * 收缩 / 完全收起时无需显示（官方 collapse 样式仍会留下 12px）。
+ */
+.litepdf-pdfui .fv__ui-sidebar.collapse .fv__ui-sidebar-dragger,
+.litepdf-pdfui .fv__ui-sidebar.collapse-totally .fv__ui-sidebar-dragger,
+.litepdf-pdfui .fv__ui-sidebar:not(.expand) .fv__ui-sidebar-dragger {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  border: none !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/**
+ * 侧栏：官方默认「左图标条 + 右内容」→ 改为「上图标条 + 下内容」
+ */
+.litepdf-pdfui .fv__ui-sidebar.expand {
+  flex-direction: column !important;
+  position: relative;
+  align-items: stretch !important;
+  flex-grow: 0 !important;
+  flex-shrink: 0 !important;
+  max-width: min(360px, 40%);
+}
+
+.litepdf-pdfui .fv__ui-sidebar.expand .fv__ui-sidebar-nav-container {
+  display: flex !important;
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 40px;
+  border-right: none;
+  border-bottom: 1px solid var(--fv-frame-border-color, #e1e1e1);
+  order: 0;
+}
+
+.litepdf-pdfui .fv__ui-sidebar.expand .fv__ui-sidebar-ctls-container {
+  display: flex !important;
+  flex: 0 0 auto;
+  width: 100%;
+  overflow: visible;
+  justify-content: center;
+}
+
+.litepdf-pdfui .fv__ui-sidebar.expand .fv__ui-sidebar-ctls {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 6px;
+  border-right: none !important;
+  background: var(--fv-secondary-bg, #f7f7f7);
+  order: 0;
+}
+
+.litepdf-pdfui .fv__ui-sidebar.expand .fv__ui-sidebar-nav {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0 !important;
+  margin-left: auto;
+  margin-right: auto;
+  gap: 2px;
+}
+
+.litepdf-pdfui .fv__ui-sidebar.expand .fv__ui-sidebar-nav-ctrl {
+  width: 36px !important;
+  height: 32px !important;
+  margin: 0 2px 0 0 !important;
+  border-radius: 6px 6px 0 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.litepdf-pdfui .fv__ui-sidebar.expand .fv__ui-sidebar-nav-ctrl.active {
+  border: 1px solid var(--fv-frame-border-color, #e1e1e1) !important;
+  border-bottom: none !important;
+  background: var(--fv-primary-bg, #fff) !important;
+}
+
+/* 覆盖官方「贴住右侧」伪元素，改为贴住底边与内容区衔接 */
+.litepdf-pdfui .fv__ui-sidebar.expand .fv__ui-sidebar-nav-ctrl.active:after {
+  right: auto !important;
+  left: 0 !important;
+  top: auto !important;
+  bottom: -1px !important;
+  width: 100% !important;
+  height: 1px !important;
+}
+
+.litepdf-pdfui .fv__ui-sidebar.expand .fv__ui-sidebar-body {
+  order: 1;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden;
+}
+
+/* 顶部已有面板图标切换，隐藏各面板标题栏以节省空间 */
+.litepdf-pdfui .fv__ui-sidebar .fv__ui-sidebar-panel-header {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+.litepdf-pdfui .fv__ui-sidebar.expand .fv__ui-sidebar-body > * {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* 上下布局时，宽度拖拽条仍贴在侧栏右缘，避免被排到内容下方 */
+.litepdf-pdfui .fv__ui-sidebar.expand .fv__ui-sidebar-dragger {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 12px !important;
+  height: auto !important;
+  order: unset !important;
+  z-index: 2;
+}
+
+/* —— 顶栏「更多」下拉（夸克风格） —— */
+.litepdf-topbar .litepdf-more-dropdown.fv__ui-dropdown {
+  position: relative !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  overflow: visible !important;
+  display: inline-block !important;
+  z-index: 30;
+}
+
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler {
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: 6px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler > .fv__ui-dropdown-caret,
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler > .fv__ui-dropdown-toggler-text {
+  display: none !important;
+}
+
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler > .fv__ui-dropdown-icon,
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler > .litepdf-icon-more {
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 !important;
+  display: inline-block !important;
+}
+
+.litepdf-topbar .litepdf-more-dropdown.active > .fv__ui-dropdown-toggler,
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler:hover {
+  background: #f3f4f6;
+}
+
+/* 展开时强制显示（覆盖可能被更高优先级盖掉的 display:none） */
+.litepdf-topbar .litepdf-more-dropdown.active > .fv__ui-dropdown-list {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list {
+  min-width: 220px !important;
+  padding: 6px 0 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.14) !important;
+  background: #fff !important;
+  margin-top: 6px !important;
+  z-index: 2000 !important;
+}
+
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item {
+  height: 40px !important;
+  min-height: 40px !important;
+  line-height: 40px !important;
+  margin: 0 !important;
+}
+
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item > .fv__ui-dropdown-button,
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item > .fv__ui-dropdown,
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item .fv__ui-dropdown-toggler {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item:hover > .fv__ui-dropdown-button,
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item:hover > .fv__ui-dropdown,
+.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item .fv__ui-dropdown-toggler:hover {
+  background: #f5f6f8 !important;
+}
+
+.litepdf-topbar .litepdf-more-dropdown .fv__ui-dropdown-icon,
+.litepdf-topbar .litepdf-more-dropdown .fv__ui-button-icon {
+  width: 16px !important;
+  height: 16px !important;
+  margin-right: 10px !important;
+  flex-shrink: 0;
+}
+
+.litepdf-topbar .litepdf-more-dropdown .fv__ui-button-text,
+.litepdf-topbar .litepdf-more-dropdown .fv__ui-dropdown-toggler-text,
+.litepdf-topbar .litepdf-more-dropdown .fv__ui-dropdown-item-text {
+  display: inline-block !important;
+  font-size: 14px !important;
+  color: #1f2329 !important;
+  text-align: left !important;
+  padding-left: 0 !important;
+}
+
+/* 「发送到其他设备」后的分隔线 */
+.litepdf-topbar .litepdf-more-dropdown .litepdf-more-after-sep {
+  border-top: 1px solid #eef0f3 !important;
+  margin-top: 4px !important;
+  padding-top: 4px !important;
+}

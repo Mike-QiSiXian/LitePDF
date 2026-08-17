@@ -1,0 +1,40 @@
+/**
+ * Foxit UIExtension.css 含全局 html/body 规则（width:100vw、position:relative 等），
+ * 动态注入后会压过应用壳样式，导致整窗被挤成左侧窄条。
+ * 本文件必须在 UIExtension.css 之后加载。
+ *
+ * 无边框标题栏（titleBarStyle:hidden）下务必用 100%，禁止 100vw，
+ * 否则易与 Window Controls Overlay 视口计算冲突。
+ */
+html,
+body {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  position: static !important;
+  box-sizing: border-box !important;
+}
+
+#app {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  position: static !important;
+  box-sizing: border-box !important;
+}
+
+#app .lp-shell,
+#app .lp-workspace,
+#app .lp-panel,
+#app .lp-viewer-host {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}

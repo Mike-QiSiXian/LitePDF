@@ -1,0 +1,49 @@
+appId: com.litepdf.app
+productName: LitePDF
+copyright: Copyright © LitePDF
+directories:
+  output: release
+  buildResources: resources
+files:
+  - dist/**/*
+  - dist-electron/**/*
+extraResources:
+  - from: public/foxit-lib
+    to: foxit-lib
+    filter:
+      - '**/*'
+  - from: public/foxit-external
+    to: foxit-external
+    filter:
+      - '**/*'
+asar: true
+asarUnpack:
+  - '**/foxit-lib/**'
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: LitePDF-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: LitePDF
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.productivity
+  artifactName: LitePDF-${version}-${arch}.${ext}
+dmg:
+  contents:
+    - x: 140
+      y: 200
+    - x: 400
+      y: 200
+      type: link
+      path: /Applications

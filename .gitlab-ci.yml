@@ -1,0 +1,54 @@
+stages:
+  - build
+
+variables:
+  npm_config_cache: '$CI_PROJECT_DIR/.npm'
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .npm/
+    - node_modules/
+
+.nodejs:
+  image: node:20
+  before_script:
+    - npm ci
+
+# Windows / macOS 安装包需在对应 runner 上执行，并自行注入 FOXIT_SDK_LIB 与 License
+build:win:
+  stage: build
+  tags: [windows]
+  script:
+    - npm ci
+    - npm run pack:win
+  artifacts:
+    paths:
+      - release/*.exe
+    expire_in: 7 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+    - when: manual
+
+build:mac:
+  stage: build
+  tags: [macos]
+  script:
+    - npm ci
+    - npm run pack:mac
+  artifacts:
+    paths:
+      - release/*.dmg
+    expire_in: 7 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+    - when: manual
+
+typecheck:
+  stage: build
+  extends: .nodejs
+  script:
+    - npx vue-tsc --noEmit
+  allow_failure: true

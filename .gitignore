@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-electron/
+release/
+.DS_Store
+*.log
+.env
+.env.local
+public/foxit-lib
+public/foxit-external
+public/license-key.js
+.vscode/
+.idea/
+*.exe
+*.dmg
+*.blockmap
+*.AppImage
