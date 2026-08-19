@@ -10,21 +10,12 @@ function notify(message: string) {
   }
 }
 
-async function closeParentDropdown(component: any) {
+function closeParentMenu(component: any) {
   try {
     let p = component?.parent
     while (p) {
-      if (typeof p.hide === 'function' && p.name === 'litepdf-more') {
+      if (typeof p.hide === 'function' && p.name === 'litepdf-more-menu') {
         p.hide()
-        break
-      }
-      if (typeof p.collapse === 'function' && p.isDropdown) {
-        p.collapse()
-        break
-      }
-      // 向上找到 more dropdown
-      if (p.name === 'litepdf-more' && typeof p.trigger === 'function') {
-        p.trigger?.('click')
         break
       }
       p = p.parent
@@ -34,11 +25,65 @@ async function closeParentDropdown(component: any) {
   }
 }
 
+async function startPresentation(pdfui: any, fullscreenTrigger: any) {
+  if (!fullscreenTrigger) throw new Error('官方全屏组件尚未就绪')
+
+  // 先在用户点击上下文中触发官方 Controller，确保 Electron 接受全屏请求。
+  fullscreenTrigger.trigger?.('click')
+  const viewModeManager = await pdfui.getViewModeManager()
+  await viewModeManager.switchTo('single-page-view-mode')
+  await pdfui.zoomTo('fitHeight')
+}
+
+/** 对齐官方 fpmodule:FileInfoCallbackController */
+async function openDocumentProperties(ctx: any) {
+  const pdfui = ctx.getPDFUI?.()
+  if (!pdfui?.__litepdfFilePath) {
+    notify('请先打开 PDF 文件')
+    return
+  }
+
+  const doc = await pdfui.getCurrentPDFDoc()
+  if (!doc) {
+    notify('无法打开文档属性')
+    return
+  }
+  await doc.getMetadata()
+
+  let popup = await getComp(ctx, 'file-property-popup')
+  if (!popup?.show && typeof pdfui.openDialog === 'function') {
+    popup = await Promise.resolve(pdfui.openDialog('file-property-popup'))
+  }
+  if (!popup?.show) {
+    notify('无法打开文档属性')
+    return
+  }
+  popup.show()
+}
+
+/** Controller 内 getComponentByName 可能同步返回组件，也可能返回 Promise */
+async function getComp(ctx: any, name: string) {
+  try {
+    return await Promise.resolve(ctx.getComponentByName(name))
+  } catch {
+    return null
+  }
+}
+
 export function defineMoreMenuController() {
   return {
+    mounted(this: any) {
+      if (this.component?.getAttribute?.('action') !== 'play') return
+      void getComp(this, 'litepdf-presentation-fullscreen-trigger').then(
+        (component: any) => {
+          this.presentationFullscreenTrigger = component
+        },
+      )
+    },
+
     async handle(this: any) {
       const action = this.component?.getAttribute?.('action') || ''
-      await closeParentDropdown(this.component)
+      closeParentMenu(this.component)
 
       switch (action) {
         case 'open-browser': {
@@ -62,27 +107,42 @@ export function defineMoreMenuController() {
           break
         case 'annotations': {
           try {
-            const commentTab = await this.getComponentByName('comment-tab')
+            const commentTab = await getComp(this, 'comment-tab')
             commentTab?.trigger?.('click')
             commentTab?.active?.()
-            const sidebar = await this.getComponentByName('sidebar')
+            const sidebar = await getComp(this, 'sidebar')
             sidebar?.expand?.()
-            const panel = await this.getComponentByName('comment-list-sidebar-panel')
+            const panel = await getComp(this, 'comment-list-sidebar-panel')
             await panel?.active?.()
           } catch {
             notify('无法打开注解面板')
           }
           break
         }
-        case 'play':
-          notify('「播放」即将支持')
+        case 'properties': {
+          try {
+            await openDocumentProperties(this)
+          } catch {
+            notify('无法打开文档属性')
+          }
           break
-        case 'properties':
-          notify('「文档属性」即将支持')
+        }
+        case 'play': {
+          const pdfui = this.getPDFUI?.()
+          if (!pdfui?.__litepdfFilePath) {
+            notify('请先打开 PDF 文件')
+            break
+          }
+          try {
+            const fullscreenTrigger =
+              this.presentationFullscreenTrigger ||
+              (await getComp(this, 'litepdf-presentation-fullscreen-trigger'))
+            await startPresentation(pdfui, fullscreenTrigger)
+          } catch {
+            notify('无法进入播放模式')
+          }
           break
-        case 'settings':
-          notify('「PDF 设置」即将支持')
-          break
+        }
         default:
           break
       }

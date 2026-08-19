@@ -14,6 +14,7 @@ interface RecentFileItem {
   name: string
   lastOpenedAt: number
   missing?: boolean
+  sizeBytes?: number
 }
 
 interface LitePdfApi {
@@ -28,6 +29,7 @@ interface LitePdfApi {
   onOpenFiles: (callback: (paths: string[]) => void) => () => void
   getFoxitLibUrl: () => Promise<string>
   openPath?: (filePath: string) => Promise<string>
+  showItemInFolder?: (filePath: string) => Promise<void>
   getPathForFile: (file: File) => string
   platform: NodeJS.Platform | 'browser'
 }

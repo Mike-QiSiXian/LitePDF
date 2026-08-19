@@ -19,11 +19,10 @@ const emit = defineEmits<{
       class="lp-tab lp-tab-home"
       :class="{ active: activeTabId === WELCOME_TAB_ID }"
       role="tab"
-      title="工作台"
-      aria-label="工作台"
+      title="开始页"
+      aria-label="开始页"
       @click="emit('activate', WELCOME_TAB_ID)"
     >
-      <!-- 首页/工作台：仅图标，节省标题栏空间 -->
       <svg
         class="lp-tab-home-icon"
         viewBox="0 0 16 16"

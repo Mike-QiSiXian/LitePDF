@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld('litepdf', {
   getFoxitLibUrl: () => ipcRenderer.invoke('foxit:libUrl') as Promise<string>,
   openPath: (filePath: string) =>
     ipcRenderer.invoke('shell:openPath', filePath) as Promise<string>,
+  showItemInFolder: (filePath: string) =>
+    ipcRenderer.invoke('shell:showItemInFolder', filePath) as Promise<void>,
   getPathForFile: (file: File) => {
     try {
       return webUtils.getPathForFile(file)

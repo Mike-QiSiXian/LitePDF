@@ -93,9 +93,18 @@ function createWindow() {
     mainWindow.setMenuBarVisibility(false)
   }
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show()
+  const reveal = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (!mainWindow.isVisible()) mainWindow.show()
+  }
+
+  // ready-to-show 在部分 Windows / 热重启场景下不会触发，did-finish-load 作为兜底
+  mainWindow.once('ready-to-show', reveal)
+  mainWindow.webContents.once('did-finish-load', reveal)
+  mainWindow.webContents.once('did-fail-load', () => {
+    reveal()
   })
+  setTimeout(reveal, 2500)
 
   if (isDev) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173')
@@ -246,6 +255,10 @@ function registerIpc() {
     if (!filePath) return 'empty path'
     return shell.openPath(filePath)
   })
+  ipcMain.handle('shell:showItemInFolder', (_e, filePath: string) => {
+    if (!filePath) return
+    shell.showItemInFolder(filePath)
+  })
 }
 
 function registerFoxitProtocol() {
@@ -267,20 +280,22 @@ function registerFoxitProtocol() {
   })
 }
 
-const gotLock = app.requestSingleInstanceLock()
+const gotLock = isDev ? true : app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
 } else {
-  app.on('second-instance', (_event, argv) => {
-    const files = argv.filter((a) => a.toLowerCase().endsWith('.pdf'))
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
-      sendOpenFiles(files)
-    } else {
-      pendingOpenFiles.push(...files)
-    }
-  })
+  if (!isDev) {
+    app.on('second-instance', (_event, argv) => {
+      const files = argv.filter((a) => a.toLowerCase().endsWith('.pdf'))
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore()
+        mainWindow.focus()
+        sendOpenFiles(files)
+      } else {
+        pendingOpenFiles.push(...files)
+      }
+    })
+  }
 
   app.whenReady().then(() => {
     registerFoxitProtocol()

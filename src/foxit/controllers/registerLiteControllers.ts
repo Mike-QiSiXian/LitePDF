@@ -1,15 +1,34 @@
+import { ensureAreaHighlightIconStyles } from '../assets/area-highlight-icons'
+import { ensureEraserIconStyles } from '../assets/eraser-icons'
+import { ensureHighlightIconStyles } from '../assets/highlight-icons'
+import { ensureInkSignIconStyles } from '../assets/inksign-icons'
 import { ensureMoreMenuIconStyles } from '../assets/more-menu-icons'
+import { ensurePencilIconStyles } from '../assets/pencil-icons'
 import { ensureSidebarToggleIconStyles } from '../assets/sidebar-icons'
+import { defineMoreMenuButtonController } from './MoreMenuButtonController'
 import { defineMoreMenuController } from './MoreMenuController'
 import { defineSidebarToggleController } from './SidebarToggleController'
+import {
+  defineRedoController,
+  defineUndoController,
+} from './UndoRedoControllers'
+import {
+  defineNextViewController,
+  definePrevViewController,
+} from './ViewNavControllers'
 
 /**
  * 统一注册 litepdf 模块下所有自研 Controller（幂等）。
- * 已存在的模块上仍可继续挂新 Controller，避免 HMR/多标签只注册到一半。
+ * @see https://devdocs.fuxinsoft.cn/development-guide/pdf-sdk-web/ui-customization/directives/controller.html
  */
 export function registerLiteControllers(UIExtension: any) {
   ensureSidebarToggleIconStyles()
   ensureMoreMenuIconStyles()
+  ensureHighlightIconStyles()
+  ensureAreaHighlightIconStyles()
+  ensurePencilIconStyles()
+  ensureEraserIconStyles()
+  ensureInkSignIconStyles()
 
   let mod: any
   try {
@@ -24,21 +43,21 @@ export function registerLiteControllers(UIExtension: any) {
 
   const bag: Set<string> = (UIExtension.__litepdfControllers ||= new Set())
 
-  if (!bag.has('SidebarToggleController')) {
+  const register = (name: string, factory: () => unknown) => {
+    if (bag.has(name)) return
     try {
-      mod.controller('SidebarToggleController', defineSidebarToggleController(UIExtension))
+      mod.controller(name, factory())
     } catch {
       // 已注册
     }
-    bag.add('SidebarToggleController')
+    bag.add(name)
   }
 
-  if (!bag.has('MoreMenuController')) {
-    try {
-      mod.controller('MoreMenuController', defineMoreMenuController())
-    } catch {
-      // 已注册
-    }
-    bag.add('MoreMenuController')
-  }
+  register('SidebarToggleController', () => defineSidebarToggleController(UIExtension))
+  register('MoreMenuButtonController', () => defineMoreMenuButtonController())
+  register('MoreMenuController', () => defineMoreMenuController())
+  register('PrevViewController', () => definePrevViewController(UIExtension))
+  register('NextViewController', () => defineNextViewController(UIExtension))
+  register('UndoController', () => defineUndoController())
+  register('RedoController', () => defineRedoController())
 }

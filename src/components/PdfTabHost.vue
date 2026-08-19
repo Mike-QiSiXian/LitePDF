@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import type { ViewerSession } from '@/foxit/session/ViewerSession'
 
 const props = defineProps<{
@@ -10,27 +10,46 @@ const props = defineProps<{
 const hostRef = ref<HTMLElement | null>(null)
 const error = ref('')
 const loading = ref(false)
+let inflight: Promise<void> | null = null
 
 async function mountIfNeeded() {
-  if (!props.active || !hostRef.value) return
-  if (loading.value) return
-  loading.value = true
-  error.value = ''
-  try {
-    await props.session.ensureMounted(hostRef.value)
-  } catch (e: any) {
-    error.value = e?.message || String(e)
-  } finally {
-    loading.value = false
+  if (!props.active) return
+  if (!hostRef.value) {
+    loading.value = true
+    await nextTick()
   }
+  const host = hostRef.value
+  if (!host) return
+  if (inflight) return inflight
+
+  inflight = (async () => {
+    loading.value = true
+    error.value = ''
+    try {
+      // ensureMounted 在 WebSDK open-file-success 回调里结束
+      await props.session.ensureMounted(host)
+    } catch (e: any) {
+      error.value = e?.message || String(e)
+    } finally {
+      loading.value = false
+    }
+  })().finally(() => {
+    inflight = null
+  })
+
+  return inflight
 }
 
-onMounted(mountIfNeeded)
-watch(() => props.active, mountIfNeeded)
-
-onBeforeUnmount(async () => {
-  // 会话销毁由上层 SessionManager 负责
+onMounted(() => {
+  void mountIfNeeded()
 })
+
+watch(
+  () => props.active,
+  (active) => {
+    if (active) void mountIfNeeded()
+  },
+)
 </script>
 
 <template>
@@ -47,7 +66,7 @@ onBeforeUnmount(async () => {
   inset: 0;
   display: grid;
   place-items: center;
-  z-index: 2;
+  z-index: 5000;
   background: rgba(246, 247, 249, 0.88);
   color: var(--lp-muted);
 }

@@ -6,7 +6,10 @@ export class ViewerSession {
   readonly path: string
   private adapter: FoxitViewerAdapter | null = null
   private mounted = false
+  private opened = false
   private host: HTMLElement | null = null
+  private mountPromise: Promise<void> | null = null
+  private openPromise: Promise<void> | null = null
 
   constructor(
     id: string,
@@ -23,19 +26,57 @@ export class ViewerSession {
     this.path = path
   }
 
-  async ensureMounted(host: HTMLElement) {
+  async ensureViewer(host: HTMLElement) {
     this.host = host
     if (this.mounted && this.adapter) return
-    this.adapter = createFoxitViewerAdapter({
-      onOpenRequest: this.hooks.onOpenRequest,
-      onSaveRequest: this.hooks.onSaveRequest,
-      onDirtyChange: this.hooks.onDirtyChange,
-      onPasswordRequired: this.hooks.onPasswordRequired,
-      onError: this.hooks.onError,
-    })
-    await this.adapter.mount(host)
-    await this.adapter.openFile(this.path)
-    this.mounted = true
+    // 并发打开时共用同一次 mount，避免 adapter 已创建但 pdfui 未就绪时提前 openFile
+    if (!this.mountPromise) {
+      this.mountPromise = (async () => {
+        if (!this.adapter) {
+          this.adapter = createFoxitViewerAdapter({
+            onOpenRequest: this.hooks.onOpenRequest,
+            onSaveRequest: this.hooks.onSaveRequest,
+            onDirtyChange: this.hooks.onDirtyChange,
+            onPasswordRequired: this.hooks.onPasswordRequired,
+            onError: this.hooks.onError,
+          })
+        }
+        await this.adapter.mount(host)
+        this.mounted = true
+      })()
+    }
+    try {
+      await this.mountPromise
+    } catch (e) {
+      this.mountPromise = null
+      this.adapter = null
+      this.mounted = false
+      throw e
+    }
+  }
+
+  async ensureDocument() {
+    if (!this.adapter || !this.mounted) {
+      throw new Error('请先初始化查看器')
+    }
+    if (this.opened) return
+    if (!this.openPromise) {
+      this.openPromise = this.adapter.openFile(this.path).then(() => {
+        this.opened = true
+      })
+    }
+    try {
+      await this.openPromise
+    } catch (e) {
+      this.openPromise = null
+      this.opened = false
+      throw e
+    }
+  }
+
+  async ensureMounted(host: HTMLElement) {
+    await this.ensureViewer(host)
+    await this.ensureDocument()
   }
 
   async saveAs(filePath: string) {
@@ -51,6 +92,9 @@ export class ViewerSession {
     await this.adapter?.destroy()
     this.adapter = null
     this.mounted = false
+    this.opened = false
+    this.mountPromise = null
+    this.openPromise = null
     this.host = null
   }
 }

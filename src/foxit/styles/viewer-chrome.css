@@ -27,19 +27,54 @@
   min-width: 0 !important;
 }
 
-.litepdf-topbar {
-  display: grid;
+/* 播放模式：原生全屏时隐藏标签栏/工具栏/侧栏（见 FoxitViewerAdapter.syncPresentationChrome） */
+.litepdf-presentation-fullscreen-trigger {
+  position: fixed !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+body.fv__pdfui-fullscreen-mode .lp-tabs,
+body.fv__pdfui-fullscreen-mode .litepdf-toolbar-shell,
+body.fv__pdfui-fullscreen-mode .litepdf-pdfui .fv__ui-sidebar,
+body.fv__pdfui-fullscreen-mode .litepdf-pdfui .fv__ui-sidebar-right,
+body.fv__pdfui-fullscreen-mode .litepdf-pdfui [name='sidebar'],
+body.fv__pdfui-fullscreen-mode .litepdf-pdfui [name='sidebar-right'] {
+  display: none !important;
+}
+
+body.fv__pdfui-fullscreen-mode .lp-workspace,
+body.fv__pdfui-fullscreen-mode .lp-panel,
+body.fv__pdfui-fullscreen-mode .lp-viewer-host,
+body.fv__pdfui-fullscreen-mode .litepdf-pdfui,
+body.fv__pdfui-fullscreen-mode .litepdf-pdfui .fv__ui-body,
+body.fv__pdfui-fullscreen-mode .litepdf-pdfui .fv__ui-pdfviewer,
+body.fv__pdfui-fullscreen-mode .litepdf-pdfui viewer {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.litepdf-toolbar-shell.fv__ui-toolbar,
+.litepdf-toolbar-shell {
+  display: grid !important;
   grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr);
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 10px;
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
   flex-shrink: 0;
-  /* toolbar 默认 line-height:0，会把文件名文字压没 */
+  background: #fff;
   line-height: normal;
-  overflow: visible;
+  overflow: visible !important;
+  position: relative;
+  z-index: 50;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .litepdf-topbar-left,
@@ -49,25 +84,46 @@
   gap: 6px;
   min-width: 0;
   overflow: visible;
+  height: 40px;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+.litepdf-topbar-left {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: stretch;
+  position: relative;
+  z-index: 100;
 }
 
 .litepdf-topbar-right {
+  grid-column: 3;
+  grid-row: 1;
   justify-content: flex-end;
+  justify-self: stretch;
   position: relative;
-  z-index: 20;
+  z-index: 100;
+  overflow: visible !important;
 }
 
-.litepdf-topbar-center {
+.litepdf-topbar-center,
+.litepdf-toolbar-shell [name='toolbar-tabs'] {
+  grid-column: 2;
+  grid-row: 1;
   display: flex !important;
   justify-content: center;
   align-items: center;
   gap: 4px;
-  height: 100%;
-  position: static !important;
+  height: 40px;
+  position: relative !important;
+  z-index: 100;
   width: auto !important;
   flex: none !important;
   border: none !important;
   background: transparent !important;
+  justify-self: center;
+  overflow: visible !important;
 }
 
 .litepdf-topbar-center .fv__ui-gtab,
@@ -77,8 +133,9 @@
 }
 
 .litepdf-filename {
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: 280px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -89,7 +146,7 @@
 }
 
 /* 自定义图标按钮容器样式（业务组件为 xbutton，逻辑走 @controller） */
-.litepdf-topbar .litepdf-icon-btn {
+.litepdf-toolbar-shell .litepdf-icon-btn {
   width: 32px !important;
   min-width: 32px !important;
   height: 32px !important;
@@ -100,23 +157,63 @@
   justify-content: center;
 }
 
-.litepdf-topbar .litepdf-icon-btn:hover {
+.litepdf-toolbar-shell .litepdf-icon-btn:hover {
   background: #f3f4f6;
 }
 
-.litepdf-toolbar-shell.fv__ui-toolbar,
-.litepdf-toolbar-shell {
-  display: flex !important;
-  flex-direction: column !important;
-  flex-shrink: 0;
-  background: #fff;
-  line-height: normal;
-  overflow: visible !important;
-}
-
-.litepdf-tool-paddle {
+.litepdf-tool-paddle,
+.litepdf-toolbar-shell [name='toolbar-tab-bodies'] {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  position: relative;
+  z-index: 1;
   border-bottom: 1px solid #e5e7eb;
   background: #fafafa;
+}
+
+/* —— 顶栏「更多」弹出菜单（contextmenu.showAt，对齐官方查找选项） —— */
+.litepdf-more-contextmenu.fv__ui-contextmenu,
+.litepdf-more-contextmenu {
+  min-width: 220px !important;
+  padding: 6px 0 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.14) !important;
+  background: #fff !important;
+}
+
+.litepdf-more-contextmenu .fv__ui-button,
+.litepdf-more-contextmenu .fv__ui-contextmenu-item {
+  width: 100% !important;
+  min-width: 220px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-sizing: border-box;
+  justify-content: flex-start !important;
+}
+
+.litepdf-more-contextmenu .fv__ui-button:hover,
+.litepdf-more-contextmenu .fv__ui-contextmenu-item:hover {
+  background: #f5f6f8 !important;
+}
+
+.litepdf-more-contextmenu .fv__ui-button-icon,
+.litepdf-more-contextmenu .fv__ui-contextmenu-item .fv__ui-button-icon {
+  width: 16px !important;
+  height: 16px !important;
+  margin-right: 10px !important;
+  flex-shrink: 0;
+}
+
+.litepdf-more-contextmenu .fv__ui-button-text,
+.litepdf-more-contextmenu .fv__ui-contextmenu-item-text {
+  font-size: 14px !important;
+  color: #1f2329 !important;
+  text-align: left !important;
 }
 
 /* 主页 / 注释 paddle：内容居中，仅保留图标以节省空间 */
@@ -154,12 +251,272 @@
   justify-content: center;
 }
 
-/* 隐藏 ribbon / 按钮文案，只留图标 */
+/* SDK 默认分隔线 height:60px，会从 44px 工具条上下冒头 */
+.litepdf-tool-paddle .fv__ui-grouplist-item::after,
+.litepdf-tool-paddle [component-type='group']::after {
+  height: 20px !important;
+  align-self: center;
+  margin: 0 6px !important;
+}
+
+/* 批注工具条：左 / 中 / 右 三区 */
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-paddle-content-container,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-paddle-content {
+  justify-content: stretch !important;
+  align-items: center !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.litepdf-tool-paddle [name='litepdf-comment-zones'],
+.litepdf-tool-paddle .litepdf-comment-zones {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  max-height: 44px;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0;
+  /* 允许绘图等下拉层溢出工具条高度 */
+  overflow: visible !important;
+}
+
+.litepdf-tool-paddle [name='litepdf-comment-zone-left'],
+.litepdf-tool-paddle .litepdf-comment-zone-left {
+  justify-self: start;
+  min-width: 0;
+}
+
+.litepdf-tool-paddle [name='litepdf-comment-zone-center'],
+.litepdf-tool-paddle .litepdf-comment-zone-center {
+  justify-self: center;
+  min-width: 0;
+}
+
+.litepdf-tool-paddle [name='litepdf-comment-zone-right'],
+.litepdf-tool-paddle .litepdf-comment-zone-right {
+  justify-self: end;
+  min-width: 0;
+}
+
+.litepdf-tool-paddle [name='comment-toolbar-group-list-left'] {
+  justify-content: flex-start !important;
+  width: auto !important;
+  margin: 0 !important;
+  gap: 0;
+}
+
+.litepdf-tool-paddle [name='comment-toolbar-group-list'] {
+  justify-content: center !important;
+  width: auto !important;
+  margin: 0 !important;
+  gap: 0;
+}
+
+/* 批注工具条：Ribbon 仅图标。槽位仍 32px（点击热区/行高），
+   图形统一 24×24 并居中；标记类官方 16×16 SVG 也放大到 24。 */
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 4px !important;
+  overflow: visible !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  box-sizing: border-box !important;
+  vertical-align: middle !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-icon > i,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-icon [class^='fv__icon-toolbar-'],
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-icon .litepdf-icon-highlight,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-icon .litepdf-icon-area-highlight,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-icon .litepdf-icon-pencil,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-icon .litepdf-icon-eraser,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-icon .litepdf-icon-inksign,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-icon .fx-icon,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-icon svg {
+  display: block !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  max-width: 24px !important;
+  max-height: 24px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+  vertical-align: middle !important;
+  background-size: 24px 24px !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  box-sizing: border-box !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-grouplist-item,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] [component-type='group'] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  box-sizing: border-box !important;
+}
+
+/* 批注：彻底隐藏 Ribbon 文案，仅保留 tooltip。
+   带下拉的 ribbon（绘图等）例外：文案区改为右下角小三角，避免整块 display:none 后无下拉入口。 */
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item-text,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-ribbon-text,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-dropdown-toggler-text {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  visibility: hidden !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item:has(.fx-ribbon-dropdown) {
+  position: relative !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item:has(.fx-ribbon-dropdown) > .fx-ribbon-item-text {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: absolute !important;
+  right: 1px !important;
+  bottom: 1px !important;
+  width: 10px !important;
+  height: 8px !important;
+  min-width: 10px !important;
+  min-height: 8px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  visibility: visible !important;
+  z-index: 2 !important;
+  pointer-events: auto !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item:has(.fx-ribbon-dropdown) .fx-ribbon-item-text-1 {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item:has(.fx-ribbon-dropdown) .fx-ribbon-item-text-2,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item:has(.fx-ribbon-dropdown) .fx-ribbon-item-more {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 10px !important;
+  height: 8px !important;
+  min-width: 10px !important;
+  min-height: 8px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-item:has(.fx-ribbon-dropdown) .fx-ribbon-item-more svg {
+  display: block !important;
+  width: 10px !important;
+  height: 8px !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-dropdown {
+  min-width: 32px !important;
+  height: auto !important;
+  overflow: visible !important;
+  margin: 0 4px !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-dropdown-toggler {
+  min-width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+/* 批注栏下拉列表：不被工具条裁切；列表项恢复文案 */
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-dropdown-list,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fx-ribbon-dropdown .fv__ui-dropdown-list {
+  z-index: 12000 !important;
+  overflow: visible !important;
+  max-height: none !important;
+  min-width: 160px !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-dropdown-list .fv__ui-button-text,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-dropdown-list .fx-ribbon-item-text,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-dropdown-list .fv__ui-ribbon-text {
+  display: inline !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  visibility: visible !important;
+}
+
+/* 隐藏 ribbon / 按钮文案，只留图标（主页等）；下拉列表项除外 */
 .litepdf-tool-paddle .fx-ribbon-item-text,
 .litepdf-tool-paddle .fv__ui-button-text,
 .litepdf-tool-paddle .fv__ui-dropdown-toggler-text,
 .litepdf-tool-paddle .fv__ui-ribbon-text {
   display: none !important;
+}
+
+.litepdf-tool-paddle .fv__ui-dropdown-list .fx-ribbon-item-text,
+.litepdf-tool-paddle .fv__ui-dropdown-list .fv__ui-button-text,
+.litepdf-tool-paddle .fv__ui-dropdown-list .fv__ui-ribbon-text {
+  display: inline !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  visibility: visible !important;
 }
 
 .litepdf-tool-paddle .fx-ribbon-item,
@@ -168,20 +525,74 @@
   min-width: 0 !important;
 }
 
-.litepdf-tool-paddle .fx-ribbon-item-text {
-  min-width: 0 !important;
-  height: 0 !important;
-  overflow: hidden !important;
-  font-size: 0 !important;
-}
-
-/* 去文案后压缩 paddle 高度 */
+/* 去文案后压缩 paddle 高度（主页 / 批注共用） */
 .litepdf-tool-paddle .fv__ui-paddle,
 .litepdf-tool-paddle .fv__ui-paddle-content,
 .litepdf-tool-paddle .fv__ui-paddle-content-container {
   height: 44px !important;
   max-height: 44px !important;
   min-height: 44px !important;
+  box-sizing: border-box !important;
+}
+
+.litepdf-tool-paddle .fv__ui-paddle,
+.litepdf-tool-paddle .fv__ui-paddle-content-container {
+  overflow: hidden;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'],
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-paddle-content-container {
+  overflow: visible !important;
+}
+
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] .fv__ui-grouplist-item,
+.litepdf-tool-paddle [name='fv--comment-tab-paddle'] [component-type='group'] {
+  height: 32px !important;
+  max-height: 32px !important;
+  min-height: 32px !important;
+  overflow: visible !important;
+  align-items: center !important;
+}
+
+/* 上一视图 / 下一视图：与翻页按钮同尺寸，图标略放大对齐观感 */
+.litepdf-tool-paddle [name='litepdf-prev-view-btn'],
+.litepdf-tool-paddle [name='litepdf-next-view-btn'] {
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+}
+
+.litepdf-tool-paddle [name='litepdf-prev-view-btn'] .fv__ui-button-icon,
+.litepdf-tool-paddle [name='litepdf-next-view-btn'] .fv__ui-button-icon,
+.litepdf-tool-paddle [name='litepdf-prev-view-btn'] .fv__icon-toolbar-previous-view,
+.litepdf-tool-paddle [name='litepdf-next-view-btn'] .fv__icon-toolbar-next-view,
+.litepdf-tool-paddle [name='litepdf-prev-view-btn'] i,
+.litepdf-tool-paddle [name='litepdf-next-view-btn'] i {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+  background-size: 22px 22px !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
+
+.litepdf-tool-paddle [name='litepdf-prev-view-btn'].disabled,
+.litepdf-tool-paddle [name='litepdf-next-view-btn'].disabled,
+.litepdf-tool-paddle [name='litepdf-prev-view-btn'][aria-disabled='true'],
+.litepdf-tool-paddle [name='litepdf-next-view-btn'][aria-disabled='true'],
+.litepdf-tool-paddle [name='litepdf-prev-view-btn'].litepdf-view-nav-disabled,
+.litepdf-tool-paddle [name='litepdf-next-view-btn'].litepdf-view-nav-disabled,
+.litepdf-tool-paddle [name='litepdf-undo-btn'].disabled,
+.litepdf-tool-paddle [name='litepdf-redo-btn'].disabled,
+.litepdf-tool-paddle [name='litepdf-undo-btn'][aria-disabled='true'],
+.litepdf-tool-paddle [name='litepdf-redo-btn'][aria-disabled='true'],
+.litepdf-tool-paddle [name='litepdf-undo-btn'].litepdf-undo-disabled,
+.litepdf-tool-paddle [name='litepdf-redo-btn'].litepdf-undo-disabled {
+  opacity: 0.35;
+  /* 保留鼠标事件，否则禁用态也无法触发 @tooltip */
+  cursor: default;
 }
 
 .litepdf-tool-paddle .fx-ribbon-item {
@@ -191,14 +602,14 @@
 }
 
 /* 顶栏侧栏按钮：展开态高亮 */
-.litepdf-topbar .litepdf-icon-btn.litepdf-sidebar-btn-active,
-.litepdf-topbar .litepdf-icon-btn.active {
+.litepdf-toolbar-shell .litepdf-icon-btn.litepdf-sidebar-btn-active,
+.litepdf-toolbar-shell .litepdf-icon-btn.active {
   background: #eef2ff;
 }
 
 /* 自定义侧栏图标占位（具体 background-image 由 sidebar-icons.ts 注入） */
-.litepdf-topbar .litepdf-icon-btn .litepdf-icon-sidebar-expand,
-.litepdf-topbar .litepdf-icon-btn .litepdf-icon-sidebar-collapse {
+.litepdf-toolbar-shell .litepdf-icon-btn .litepdf-icon-sidebar-expand,
+.litepdf-toolbar-shell .litepdf-icon-btn .litepdf-icon-sidebar-collapse {
   width: 16px;
   height: 16px;
 }
@@ -339,113 +750,3 @@
   z-index: 2;
 }
 
-/* —— 顶栏「更多」下拉（夸克风格） —— */
-.litepdf-topbar .litepdf-more-dropdown.fv__ui-dropdown {
-  position: relative !important;
-  width: 32px !important;
-  min-width: 32px !important;
-  height: 32px !important;
-  line-height: 32px !important;
-  overflow: visible !important;
-  display: inline-block !important;
-  z-index: 30;
-}
-
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler {
-  width: 32px !important;
-  min-width: 32px !important;
-  height: 32px !important;
-  padding: 0 !important;
-  border-radius: 6px;
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler > .fv__ui-dropdown-caret,
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler > .fv__ui-dropdown-toggler-text {
-  display: none !important;
-}
-
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler > .fv__ui-dropdown-icon,
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler > .litepdf-icon-more {
-  width: 16px !important;
-  height: 16px !important;
-  margin: 0 !important;
-  display: inline-block !important;
-}
-
-.litepdf-topbar .litepdf-more-dropdown.active > .fv__ui-dropdown-toggler,
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-toggler:hover {
-  background: #f3f4f6;
-}
-
-/* 展开时强制显示（覆盖可能被更高优先级盖掉的 display:none） */
-.litepdf-topbar .litepdf-more-dropdown.active > .fv__ui-dropdown-list {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list {
-  min-width: 220px !important;
-  padding: 6px 0 !important;
-  border: none !important;
-  border-radius: 10px !important;
-  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.14) !important;
-  background: #fff !important;
-  margin-top: 6px !important;
-  z-index: 2000 !important;
-}
-
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item {
-  height: 40px !important;
-  min-height: 40px !important;
-  line-height: 40px !important;
-  margin: 0 !important;
-}
-
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item > .fv__ui-dropdown-button,
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item > .fv__ui-dropdown,
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item .fv__ui-dropdown-toggler {
-  height: 40px !important;
-  min-height: 40px !important;
-  padding: 0 14px !important;
-  border: none !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item:hover > .fv__ui-dropdown-button,
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item:hover > .fv__ui-dropdown,
-.litepdf-topbar .litepdf-more-dropdown > .fv__ui-dropdown-list > li.fv__ui-dropdown-item .fv__ui-dropdown-toggler:hover {
-  background: #f5f6f8 !important;
-}
-
-.litepdf-topbar .litepdf-more-dropdown .fv__ui-dropdown-icon,
-.litepdf-topbar .litepdf-more-dropdown .fv__ui-button-icon {
-  width: 16px !important;
-  height: 16px !important;
-  margin-right: 10px !important;
-  flex-shrink: 0;
-}
-
-.litepdf-topbar .litepdf-more-dropdown .fv__ui-button-text,
-.litepdf-topbar .litepdf-more-dropdown .fv__ui-dropdown-toggler-text,
-.litepdf-topbar .litepdf-more-dropdown .fv__ui-dropdown-item-text {
-  display: inline-block !important;
-  font-size: 14px !important;
-  color: #1f2329 !important;
-  text-align: left !important;
-  padding-left: 0 !important;
-}
-
-/* 「发送到其他设备」后的分隔线 */
-.litepdf-topbar .litepdf-more-dropdown .litepdf-more-after-sep {
-  border-top: 1px solid #eef0f3 !important;
-  margin-top: 4px !important;
-  padding-top: 4px !important;
-}

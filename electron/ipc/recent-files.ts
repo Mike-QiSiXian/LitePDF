@@ -10,6 +10,8 @@ export interface RecentFileRecord {
 
 export interface RecentFileItem extends RecentFileRecord {
   missing?: boolean
+  /** 本地文件大小（字节）；缺失文件时为空 */
+  sizeBytes?: number
 }
 
 const MAX_RECENT = 20
@@ -33,11 +35,25 @@ function writeStore(items: RecentFileRecord[]) {
   fs.writeFileSync(storePath(), JSON.stringify(items, null, 2), 'utf8')
 }
 
-export function getRecentFiles(): RecentFileItem[] {
-  return readStore().map((item) => ({
+function enrich(item: RecentFileRecord): RecentFileItem {
+  const exists = fs.existsSync(item.path)
+  let sizeBytes: number | undefined
+  if (exists) {
+    try {
+      sizeBytes = fs.statSync(item.path).size
+    } catch {
+      sizeBytes = undefined
+    }
+  }
+  return {
     ...item,
-    missing: !fs.existsSync(item.path),
-  }))
+    missing: !exists,
+    sizeBytes,
+  }
+}
+
+export function getRecentFiles(): RecentFileItem[] {
+  return readStore().map(enrich)
 }
 
 export function addRecentFile(filePath: string): RecentFileItem[] {

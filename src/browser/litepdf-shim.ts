@@ -31,10 +31,14 @@ function readRecent(): RecentFileItem[] {
   try {
     const raw = localStorage.getItem(RECENT_KEY)
     const list = raw ? (JSON.parse(raw) as RecentFileItem[]) : []
-    return list.map((item) => ({
-      ...item,
-      missing: !fileStore.has(item.path),
-    }))
+    return list.map((item) => {
+      const file = fileStore.get(item.path)
+      return {
+        ...item,
+        missing: !file,
+        sizeBytes: file?.size,
+      }
+    })
   } catch {
     return []
   }
@@ -166,6 +170,10 @@ export function installBrowserLitePdfShim() {
       }
       window.open(`file:///${filePath.replace(/\\/g, '/')}`, '_blank')
       return ''
+    },
+
+    async showItemInFolder() {
+      // 浏览器模式无系统资源管理器
     },
 
     getPathForFile(file: File) {
