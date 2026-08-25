@@ -136,11 +136,25 @@ function getFoxitLibDir() {
   return path.join(process.resourcesPath, 'foxit-lib')
 }
 
+function getFoxitExternalDir() {
+  if (isDev) {
+    return path.join(app.getAppPath(), 'public', 'foxit-external')
+  }
+  return path.join(process.resourcesPath, 'foxit-external')
+}
+
 function getFoxitLibUrl() {
   if (isDev) {
     return `${process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173'}/foxit-lib`
   }
   return 'app-foxit://lib'
+}
+
+function getFoxitExternalUrl() {
+  if (isDev) {
+    return `${process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173'}/foxit-external`
+  }
+  return 'app-foxit://external'
 }
 
 try {
@@ -370,6 +384,7 @@ function registerIpc() {
     await shell.openExternal(url.toString())
   })
   ipcMain.handle('foxit:libUrl', () => getFoxitLibUrl())
+  ipcMain.handle('foxit:externalUrl', () => getFoxitExternalUrl())
   ipcMain.handle('shell:openPath', async (_e, filePath: string) => {
     if (!filePath) return 'empty path'
     return shell.openPath(filePath)
@@ -384,9 +399,10 @@ function registerFoxitProtocol() {
   protocol.registerFileProtocol('app-foxit', (request, callback) => {
     try {
       const url = new URL(request.url)
-      // app-foxit://lib/UIExtension.full.js → host=lib, pathname=/UIExtension.full.js
+      // app-foxit://lib/... → foxit-lib；app-foxit://external/... → foxit-external/brotli
+      const host = url.hostname
+      const base = host === 'external' ? getFoxitExternalDir() : getFoxitLibDir()
       const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '')
-      const base = getFoxitLibDir()
       const filePath = path.normalize(path.join(base, rel || 'index.html'))
       if (!filePath.startsWith(path.normalize(base))) {
         callback({ error: -6 })

@@ -22,6 +22,13 @@ async function resolveLibPath() {
   return `${window.location.origin}/foxit-lib`
 }
 
+async function resolveFontPath() {
+  if (window.litepdf?.getFoxitExternalUrl) {
+    return `${(await window.litepdf.getFoxitExternalUrl()).replace(/\/$/, '')}/brotli`
+  }
+  return `${window.location.origin}/foxit-external/brotli`
+}
+
 let sdkLoadPromise: Promise<any> | null = null
 
 async function loadScript(src: string) {
@@ -232,15 +239,14 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
           host.appendChild(renderTo)
 
           const libPath = await resolveLibPath()
+          const fontPath = await resolveFontPath()
           const UIExtension = await ensureUIExtension(libPath)
           const { licenseSN, licenseKey } = await getLicense()
 
           const readyWorker = window.preloadJrWorker?.({
             workerPath: `${libPath}/`,
             enginePath: `${libPath}/jr-engine/gsdk`,
-            fontPath: import.meta.env.DEV
-              ? `${window.location.origin}/foxit-external/brotli`
-              : `${libPath}/`,
+            fontPath,
             licenseSN,
             licenseKey,
           })
@@ -263,6 +269,7 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
               libPath,
               jr: {
                 readyWorker,
+                fontPath,
                 licenseSN,
                 licenseKey,
               },

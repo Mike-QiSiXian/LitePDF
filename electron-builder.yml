@@ -7,18 +7,37 @@ directories:
 files:
   - dist/**/*
   - dist-electron/**/*
+  - '!dist/foxit-lib/**'
+  - '!dist/foxit-external/**'
+# Chromium 语言包只留中英文，避免 locales 再占约 40MB
+electronLanguages:
+  - en-US
+  - zh-CN
+  - zh-TW
+# SDK 只通过 extraResources 各带一份；fontPath 必须指向 foxit-external/brotli
 extraResources:
   - from: public/foxit-lib
     to: foxit-lib
     filter:
       - '**/*'
+      - '!**/*.d.ts'
+      - '!stamps/de-DE/**'
+      - '!stamps/es-419/**'
+      - '!stamps/fr-FR/**'
+      - '!stamps/it-IT/**'
+      - '!stamps/ja-JP/**'
+      - '!stamps/ko-KR/**'
+      - '!stamps/nl-NL/**'
+      - '!**/locales/de-DE/**'
+      - '!**/locales/es-419/**'
+      - '!**/locales/fr-FR/**'
+      - '!**/locales/it-IT/**'
+      - '!**/locales/ja-JP/**'
+      - '!**/locales/ko-KR/**'
+      - '!**/locales/nl-NL/**'
   - from: public/foxit-external
     to: foxit-external
-    filter:
-      - '**/*'
 asar: true
-asarUnpack:
-  - '**/foxit-lib/**'
 win:
   target:
     - target: nsis

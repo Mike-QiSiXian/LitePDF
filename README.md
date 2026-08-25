@@ -55,6 +55,13 @@ npm run pack:mac
 - Windows: `LitePDF-Setup-<version>.exe`
 - macOS: `LitePDF-<version>-<arch>.dmg`
 
+安装包体积说明：
+
+- SDK 只通过 `extraResources` 各带一份 `foxit-lib` 与 `foxit-external`，不会再打进 `app.asar`
+- 图章 / 词条只保留 `zh-CN`、`zh-TW`、`en-US`
+- `jr.fontPath` 指向 `foxit-external/brotli`（官方回退字体，必须随包分发）
+- Electron 语言包同样只保留中英文
+
 代码签名/Apple 公证未强制启用，可按发布需要补充证书环境变量。
 
 ## 官方参考

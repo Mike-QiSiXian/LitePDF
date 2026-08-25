@@ -1,11 +1,26 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import electron from 'vite-plugin-electron/simple'
-import path from 'node:path'
+
+/** 开发时 public/foxit-* 走 Vite 静态资源；打包进 dist 会导致安装包重复携带 SDK */
+function excludeFoxitFromDist() {
+  return {
+    name: 'exclude-foxit-from-dist',
+    apply: 'build' as const,
+    closeBundle() {
+      for (const name of ['foxit-lib', 'foxit-external']) {
+        fs.rmSync(path.resolve(__dirname, 'dist', name), { recursive: true, force: true })
+      }
+    },
+  }
+}
 
 export default defineConfig({
   plugins: [
     vue(),
+    excludeFoxitFromDist(),
     electron({
       main: {
         entry: 'electron/main.ts',

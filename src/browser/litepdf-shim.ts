@@ -178,6 +178,10 @@ export function installBrowserLitePdfShim() {
       return `${window.location.origin}/foxit-lib`
     },
 
+    async getFoxitExternalUrl() {
+      return `${window.location.origin}/foxit-external`
+    },
+
     async openPath(filePath: string) {
       if (!filePath) return 'empty path'
       const file = fileStore.get(filePath)
