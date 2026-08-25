@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { isBrowserDebugMode } from '@/browser/litepdf-shim'
+import AboutDialog from '@/components/AboutDialog.vue'
 import { useRecentStore } from '@/stores/recent'
 import { formatSize, formatTime } from '@/utils/path'
 
@@ -25,6 +26,7 @@ const SORT_OPTIONS: { id: SortMode; label: string; chip: string }[] = [
 
 const sortMode = ref<SortMode>('recent-desc')
 const sortMenuOpen = ref(false)
+const aboutOpen = ref(false)
 
 const sortChipLabel = computed(
   () => SORT_OPTIONS.find((o) => o.id === sortMode.value)?.chip ?? '↓ 最近',
@@ -286,7 +288,15 @@ function showInFolder(filePath: string) {
           </li>
         </ul>
       </section>
+
+      <footer class="welcome-footer">
+        <button type="button" class="about-link" @click="aboutOpen = true">
+          关于 LitePDF
+        </button>
+      </footer>
     </div>
+
+    <AboutDialog :open="aboutOpen" @close="aboutOpen = false" />
   </div>
 </template>
 
@@ -306,10 +316,13 @@ function showInFolder(filePath: string) {
 
 .welcome-inner {
   width: 100%;
+  min-height: 100%;
   max-width: 1120px;
   margin: 0 auto;
   padding: 28px 36px 48px;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .welcome-header {
@@ -811,6 +824,29 @@ button.feat-card:focus-visible {
 .icon-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+.welcome-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding-top: 40px;
+}
+
+.about-link {
+  appearance: none;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #8b93a7;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.about-link:hover {
+  background: #f3f4f6;
+  color: var(--wq-blue);
 }
 
 @media (max-width: 1100px) {

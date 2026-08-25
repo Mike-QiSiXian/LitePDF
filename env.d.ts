@@ -17,6 +17,18 @@ interface RecentFileItem {
   sizeBytes?: number
 }
 
+interface UpdateCheckResult {
+  status: 'available' | 'up-to-date' | 'unavailable' | 'error'
+  currentVersion: string
+  latestVersion?: string
+  releaseName?: string
+  releaseNotes?: string
+  publishedAt?: string
+  releaseUrl?: string
+  downloadUrl?: string
+  message: string
+}
+
 interface LitePdfApi {
   openPdfDialog: () => Promise<string[]>
   savePdfDialog: (defaultName?: string) => Promise<string | null>
@@ -26,6 +38,9 @@ interface LitePdfApi {
   addRecentFile: (filePath: string) => Promise<RecentFileItem[]>
   removeRecentFile: (filePath: string) => Promise<RecentFileItem[]>
   clearRecentFiles: () => Promise<void>
+  getAppVersion: () => Promise<string>
+  checkForUpdates: () => Promise<UpdateCheckResult>
+  downloadUpdate: (downloadUrl: string) => Promise<void>
   onOpenFiles: (callback: (paths: string[]) => void) => () => void
   getFoxitLibUrl: () => Promise<string>
   openPath?: (filePath: string) => Promise<string>

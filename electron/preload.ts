@@ -14,6 +14,11 @@ contextBridge.exposeInMainWorld('litepdf', {
   removeRecentFile: (filePath: string) =>
     ipcRenderer.invoke('recent:remove', filePath) as Promise<RecentFileItem[]>,
   clearRecentFiles: () => ipcRenderer.invoke('recent:clear') as Promise<void>,
+  getAppVersion: () => ipcRenderer.invoke('app:getVersion') as Promise<string>,
+  checkForUpdates: () =>
+    ipcRenderer.invoke('update:check') as Promise<UpdateCheckResult>,
+  downloadUpdate: (downloadUrl: string) =>
+    ipcRenderer.invoke('update:download', downloadUrl) as Promise<void>,
   onOpenFiles: (callback: (paths: string[]) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, paths: string[]) => callback(paths)
     ipcRenderer.on('open-files', handler)

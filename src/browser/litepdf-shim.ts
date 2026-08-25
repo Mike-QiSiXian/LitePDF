@@ -3,6 +3,8 @@
  * 便于在 http://localhost:5173 直接点「打开 PDF」调试。
  */
 
+import packageJson from '../../package.json'
+
 const RECENT_KEY = 'litepdf.browser.recent'
 const MAX_RECENT = 20
 const fileStore = new Map<string, File>()
@@ -150,6 +152,22 @@ export function installBrowserLitePdfShim() {
 
     async clearRecentFiles() {
       writeRecent([])
+    },
+
+    async getAppVersion() {
+      return packageJson.version
+    },
+
+    async checkForUpdates() {
+      return {
+        status: 'unavailable',
+        currentVersion: packageJson.version,
+        message: '浏览器调试模式不支持检查桌面客户端更新。',
+      }
+    },
+
+    async downloadUpdate(downloadUrl: string) {
+      window.open(downloadUrl, '_blank', 'noopener,noreferrer')
     },
 
     onOpenFiles() {

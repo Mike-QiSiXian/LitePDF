@@ -4,6 +4,7 @@ import {
   dialog,
   ipcMain,
   Menu,
+  net,
   protocol,
   shell,
 } from 'electron'
@@ -19,6 +20,110 @@ import {
 const isDev = !app.isPackaged
 let mainWindow: BrowserWindow | null = null
 const pendingOpenFiles: string[] = []
+const GITHUB_LATEST_RELEASE_API =
+  'https://api.github.com/repos/Mike-QiSiXian/LitePDF/releases/latest'
+
+interface GitHubReleaseAsset {
+  name: string
+  browser_download_url: string
+}
+
+interface GitHubRelease {
+  tag_name: string
+  name?: string
+  html_url: string
+  body?: string
+  published_at?: string
+  assets?: GitHubReleaseAsset[]
+}
+
+interface UpdateCheckResult {
+  status: 'available' | 'up-to-date' | 'unavailable' | 'error'
+  currentVersion: string
+  latestVersion?: string
+  releaseName?: string
+  releaseNotes?: string
+  publishedAt?: string
+  releaseUrl?: string
+  downloadUrl?: string
+  message: string
+}
+
+function normalizeVersion(version: string) {
+  return version.trim().replace(/^v/i, '').split('-')[0]
+}
+
+function compareVersions(left: string, right: string) {
+  const a = normalizeVersion(left).split('.').map((part) => Number(part) || 0)
+  const b = normalizeVersion(right).split('.').map((part) => Number(part) || 0)
+  const length = Math.max(a.length, b.length)
+  for (let index = 0; index < length; index += 1) {
+    const delta = (a[index] || 0) - (b[index] || 0)
+    if (delta !== 0) return delta
+  }
+  return 0
+}
+
+function selectReleaseAsset(assets: GitHubReleaseAsset[] = []) {
+  const arch = process.arch.toLowerCase()
+  const candidates = assets.filter((asset) => {
+    const name = asset.name.toLowerCase()
+    if (process.platform === 'win32') return name.endsWith('.exe')
+    if (process.platform === 'darwin') return name.endsWith('.dmg')
+    return name.endsWith('.appimage') || name.endsWith('.deb') || name.endsWith('.rpm')
+  })
+
+  return (
+    candidates.find((asset) => asset.name.toLowerCase().includes(arch)) ||
+    candidates.find((asset) => /setup|installer/i.test(asset.name)) ||
+    candidates[0]
+  )
+}
+
+async function checkForUpdates(): Promise<UpdateCheckResult> {
+  const currentVersion = app.getVersion()
+  try {
+    const response = await net.fetch(GITHUB_LATEST_RELEASE_API, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': `LitePDF/${currentVersion}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    })
+
+    if (response.status === 404) {
+      return {
+        status: 'unavailable',
+        currentVersion,
+        message: 'GitHub 仓库暂未发布可供检查的正式版本。',
+      }
+    }
+    if (!response.ok) throw new Error(`GitHub API 返回 ${response.status}`)
+
+    const release = (await response.json()) as GitHubRelease
+    const latestVersion = normalizeVersion(release.tag_name)
+    const asset = selectReleaseAsset(release.assets)
+    const hasUpdate = compareVersions(latestVersion, currentVersion) > 0
+
+    return {
+      status: hasUpdate ? 'available' : 'up-to-date',
+      currentVersion,
+      latestVersion,
+      releaseName: release.name || release.tag_name,
+      releaseNotes: release.body || '',
+      publishedAt: release.published_at,
+      releaseUrl: release.html_url,
+      downloadUrl: asset?.browser_download_url || release.html_url,
+      message: hasUpdate ? `发现新版本 ${latestVersion}` : '当前已是最新版本。',
+    }
+  } catch (error) {
+    return {
+      status: 'error',
+      currentVersion,
+      message: error instanceof Error ? error.message : '检查更新失败',
+    }
+  }
+}
 
 function getPreloadPath() {
   return path.join(__dirname, 'preload.js')
@@ -250,6 +355,20 @@ function registerIpc() {
   ipcMain.handle('recent:add', (_e, filePath: string) => addRecentFile(filePath))
   ipcMain.handle('recent:remove', (_e, filePath: string) => removeRecentFile(filePath))
   ipcMain.handle('recent:clear', () => clearRecentFiles())
+  ipcMain.handle('app:getVersion', () => app.getVersion())
+  ipcMain.handle('update:check', () => checkForUpdates())
+  ipcMain.handle('update:download', async (_e, downloadUrl: string) => {
+    const url = new URL(downloadUrl)
+    const allowedHosts = new Set([
+      'github.com',
+      'objects.githubusercontent.com',
+      'github-releases.githubusercontent.com',
+    ])
+    if (url.protocol !== 'https:' || !allowedHosts.has(url.hostname)) {
+      throw new Error('无效的更新下载地址')
+    }
+    await shell.openExternal(url.toString())
+  })
   ipcMain.handle('foxit:libUrl', () => getFoxitLibUrl())
   ipcMain.handle('shell:openPath', async (_e, filePath: string) => {
     if (!filePath) return 'empty path'
