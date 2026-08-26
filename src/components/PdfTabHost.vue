@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from 'vue'
-import { toUserFacingErrorMessage } from '@/foxit/errors'
+import { toUserFacingErrorMessageWithFallback } from '@/foxit/errors'
 import type { ViewerSession } from '@/foxit/session/ViewerSession'
 
 const props = defineProps<{
@@ -30,8 +30,7 @@ async function mountIfNeeded() {
       // ensureMounted 在 WebSDK open-file-success 回调里结束
       await props.session.ensureMounted(host)
     } catch (e: unknown) {
-      // WebSDK 已弹「授权无效」等对话框时，不要再叠一层 -3 遮罩
-      error.value = toUserFacingErrorMessage(e)
+      error.value = toUserFacingErrorMessageWithFallback(e)
     } finally {
       loading.value = false
     }

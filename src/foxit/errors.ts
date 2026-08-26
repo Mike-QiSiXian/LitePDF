@@ -29,3 +29,8 @@ export function toUserFacingErrorMessage(value: unknown): string {
   }
   return message.trim()
 }
+
+/** 打开失败但 SDK 只返回错误码时，给用户可读兜底文案 */
+export function toUserFacingErrorMessageWithFallback(value: unknown): string {
+  return toUserFacingErrorMessage(value) || 'PDF 打开失败，请重试。'
+}

@@ -10,6 +10,8 @@ declare global {
 
 export type FoxitScriptsBundle = {
   libPath: string
+  /** JR Worker 路径；安装版与 libPath 同为 127.0.0.1 静态服务 */
+  workerLibPath: string
   fontPath: string
   UIExtension: any
   licenseSN: string
@@ -32,6 +34,13 @@ export async function resolveLibPath() {
     return (await window.litepdf.getFoxitLibUrl()).replace(/\/$/, '')
   }
   return `${window.location.origin}/foxit-lib`
+}
+
+export async function resolveWorkerLibPath() {
+  if (window.litepdf?.getFoxitWorkerLibUrl) {
+    return (await window.litepdf.getFoxitWorkerLibUrl()).replace(/\/$/, '')
+  }
+  return resolveLibPath()
 }
 
 /** 与官方 Vue3 示例一致；未嵌入字体再靠 Local Font Access 走本机字体 */
@@ -113,13 +122,16 @@ export async function ensureUIExtension(libPath: string) {
 function ensureScriptsWarmup() {
   if (!scriptsWarmupPromise) {
     scriptsWarmupPromise = (async () => {
-      const libPath = await resolveLibPath()
+      const [libPath, workerLibPath] = await Promise.all([
+        resolveLibPath(),
+        resolveWorkerLibPath(),
+      ])
       const fontPath = resolveFontPath()
 
       prefetchUrls([
-        `${libPath}/WebPDFJRWorker.js`,
-        `${libPath}/jr-engine/gsdk/gsdk.js`,
-        `${libPath}/MessageWorker.js`,
+        `${workerLibPath}/WebPDFJRWorker.js`,
+        `${workerLibPath}/jr-engine/gsdk/gsdk.js`,
+        `${workerLibPath}/MessageWorker.js`,
       ])
 
       const [UIExtension, license] = await Promise.all([
@@ -129,6 +141,7 @@ function ensureScriptsWarmup() {
 
       return {
         libPath,
+        workerLibPath,
         fontPath,
         UIExtension,
         licenseSN: license.licenseSN,
@@ -151,9 +164,10 @@ export function createReadyWorker(base: FoxitScriptsBundle): unknown {
     throw new Error('preloadJrWorker 未就绪')
   }
 
+  const workerBase = base.workerLibPath || base.libPath
   return window.preloadJrWorker({
-    workerPath: `${base.libPath}/`,
-    enginePath: `${base.libPath}/jr-engine/gsdk`,
+    workerPath: `${workerBase}/`,
+    enginePath: `${workerBase}/jr-engine/gsdk`,
     fontPath: base.fontPath,
     licenseSN: base.licenseSN,
     licenseKey: base.licenseKey,

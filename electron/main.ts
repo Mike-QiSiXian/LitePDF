@@ -17,9 +17,12 @@ import {
   getRecentFiles,
   removeRecentFile,
 } from './ipc/recent-files'
+import { startLocalStaticServer, type LocalStaticServer } from './local-static-server'
 
 const isDev = !app.isPackaged
 let mainWindow: BrowserWindow | null = null
+let localServer: LocalStaticServer | null = null
+let localServerPromise: Promise<LocalStaticServer> | null = null
 const pendingOpenFiles: string[] = []
 const GITHUB_LATEST_RELEASE_API =
   'https://api.github.com/repos/Mike-QiSiXian/LitePDF/releases/latest'
@@ -184,11 +187,42 @@ function getFoxitExternalDir() {
   return path.join(process.resourcesPath, 'foxit-external')
 }
 
-function getFoxitLibUrl() {
+function getDistDir() {
+  return path.join(__dirname, '../dist')
+}
+
+async function ensureLocalServer() {
+  if (localServer) return localServer
+  if (!localServerPromise) {
+    localServerPromise = startLocalStaticServer({
+      distDir: getDistDir(),
+      foxitLibDir: getFoxitLibDir(),
+    }).then((server) => {
+      localServer = server
+      return server
+    })
+  }
+  return localServerPromise
+}
+
+async function getFoxitLibUrl() {
   if (isDev) {
     return `${process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173'}/foxit-lib`
   }
-  return 'app-foxit://lib'
+  const server = await ensureLocalServer()
+  return `${server.origin}/foxit-lib`
+}
+
+async function getFoxitWorkerLibUrl() {
+  return getFoxitLibUrl()
+}
+
+async function getAppEntryUrl() {
+  if (isDev) {
+    return process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173'
+  }
+  const server = await ensureLocalServer()
+  return server.origin
 }
 
 function getFoxitExternalUrl() {
@@ -270,7 +304,9 @@ function createWindow() {
   if (isDev) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173')
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+    void getAppEntryUrl().then((origin) => {
+      mainWindow?.loadURL(`${origin}/`)
+    })
   }
 
   mainWindow.webContents.on('did-finish-load', () => {
@@ -427,6 +463,7 @@ function registerIpc() {
     await shell.openExternal(url.toString())
   })
   ipcMain.handle('foxit:libUrl', () => getFoxitLibUrl())
+  ipcMain.handle('foxit:workerLibUrl', () => getFoxitWorkerLibUrl())
   ipcMain.handle('foxit:externalUrl', () => getFoxitExternalUrl())
   ipcMain.handle('shell:openPath', async (_e, filePath: string) => {
     if (!filePath) return 'empty path'
@@ -475,7 +512,7 @@ if (!gotLock) {
     })
   }
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     // Local Font Access：缺省允许，避免运行时弹「询问」导致未嵌入字体的 PDF 缺字
     const ses = session.defaultSession
     ses.setPermissionCheckHandler((_wc, permission) => {
@@ -490,6 +527,7 @@ if (!gotLock) {
       callback(true)
     })
 
+    if (!isDev) await ensureLocalServer()
     registerFoxitProtocol()
     registerIpc()
     createWindow()
@@ -510,6 +548,10 @@ if (!gotLock) {
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
+  })
+
+  app.on('will-quit', () => {
+    void localServer?.close()
   })
 
   app.on('web-contents-created', (_event, contents) => {

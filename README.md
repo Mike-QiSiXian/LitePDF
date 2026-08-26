@@ -12,6 +12,11 @@
 
 ## 当前版本
 
+### v0.1.5
+
+- **修复安装版无法打开 PDF**：生产环境改为通过本机 `127.0.0.1` HTTP 静态服务提供应用与 Foxit SDK，避免 `file://` / 自定义协议导致 JR Worker 与 addon 加载失败
+- 打开失败且无具体文案时，应用层给出「PDF 打开失败，请重试。」兜底提示，避免空白遮罩
+
 ### v0.1.4
 
 - **修复多标签共用 `readyWorker`**：每个 PDFUI 实例独立创建 JR Worker，避免第二个 PDF 报 `reading 'sources'`
@@ -95,6 +100,7 @@ npm run pack:mac
 
 安装包体积说明：
 
+- 安装版启动后在本机 `127.0.0.1` 提供静态资源，使 Worker / addon 与开发环境一样走 HTTP
 - SDK 核心库只通过 `extraResources` 带一份 `foxit-lib`；npm 包本身不打进 `app.asar`
 - 图章 / 词条只保留 `zh-CN`、`zh-TW`、`en-US`
 - 不打包 `foxit-external`：回退字体用官方 webfonts，文档字体走本机 Local Font Access

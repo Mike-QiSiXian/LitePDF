@@ -182,6 +182,10 @@ export function installBrowserLitePdfShim() {
       return `${window.location.origin}/foxit-lib`
     },
 
+    async getFoxitWorkerLibUrl() {
+      return `${window.location.origin}/foxit-lib`
+    },
+
     async getFoxitExternalUrl() {
       return `${window.location.origin}/foxit-external`
     },
