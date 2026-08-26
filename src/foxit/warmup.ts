@@ -8,23 +8,24 @@ declare global {
   }
 }
 
-export type FoxitWarmupBundle = {
+export type FoxitScriptsBundle = {
   libPath: string
   fontPath: string
   UIExtension: any
   licenseSN: string
   licenseKey: string
+}
+
+/** @deprecated 使用 FoxitScriptsBundle + createReadyWorker */
+export type FoxitWarmupBundle = FoxitScriptsBundle & {
   readyWorker: unknown
 }
 
-export type WarmupFoxitOptions = {
-  /** 是否预加载 JR Worker；开始页只做脚本预热，Worker 延至首次 mount */
-  preloadWorker?: boolean
-}
-
 let sdkLoadPromise: Promise<any> | null = null
-let scriptsWarmupPromise: Promise<Omit<FoxitWarmupBundle, 'readyWorker'>> | null = null
-let workerWarmupPromise: Promise<FoxitWarmupBundle> | null = null
+let scriptsWarmupPromise: Promise<FoxitScriptsBundle> | null = null
+/** 欢迎页后台预热的 Worker，仅供首个 PDFUI 实例认领，不可多实例共用 */
+let prewarmedWorker: unknown | null = null
+let prewarmTask: Promise<unknown> | null = null
 
 export async function resolveLibPath() {
   if (window.litepdf?.getFoxitLibUrl) {
@@ -141,45 +142,60 @@ function ensureScriptsWarmup() {
   return scriptsWarmupPromise
 }
 
-function ensureWorkerWarmup() {
-  if (!workerWarmupPromise) {
-    workerWarmupPromise = (async () => {
-      const base = await ensureScriptsWarmup()
-
-      if (typeof window.preloadJrWorker !== 'function') {
-        throw new Error('preloadJrWorker 未就绪')
-      }
-
-      const readyWorker = window.preloadJrWorker({
-        workerPath: `${base.libPath}/`,
-        enginePath: `${base.libPath}/jr-engine/gsdk`,
-        fontPath: base.fontPath,
-        licenseSN: base.licenseSN,
-        licenseKey: base.licenseKey,
-      })
-
-      return {
-        ...base,
-        readyWorker,
-      }
-    })().catch((error) => {
-      workerWarmupPromise = null
-      throw error
-    })
+/**
+ * 为单个 PDFUI 实例创建独立 JR Worker。
+ * WebSDK 多实例场景下 readyWorker 不可共用，每实例须单独构造。
+ */
+export function createReadyWorker(base: FoxitScriptsBundle): unknown {
+  if (typeof window.preloadJrWorker !== 'function') {
+    throw new Error('preloadJrWorker 未就绪')
   }
-  return workerWarmupPromise
+
+  return window.preloadJrWorker({
+    workerPath: `${base.libPath}/`,
+    enginePath: `${base.libPath}/jr-engine/gsdk`,
+    fontPath: base.fontPath,
+    licenseSN: base.licenseSN,
+    licenseKey: base.licenseKey,
+  })
 }
 
 /**
- * 预热 Foxit SDK。
- * - 开始页：`preloadWorker: false`，只拉脚本与 License
- * - 首次 mount：`preloadWorker: true`（默认），再创建 readyWorker 供 PDFUI 使用
+ * 欢迎页后台预创建 Worker，缩短首个 PDF 打开等待。
+ * 仅首个 PDFUI 可认领；后续实例须调用 createReadyWorker。
  */
-export function warmupFoxitSdk(options: { preloadWorker: false }): Promise<
-  Omit<FoxitWarmupBundle, 'readyWorker'>
->
-export function warmupFoxitSdk(options?: { preloadWorker?: true }): Promise<FoxitWarmupBundle>
-export function warmupFoxitSdk(options: WarmupFoxitOptions = {}) {
-  const preloadWorker = options.preloadWorker !== false
-  return preloadWorker ? ensureWorkerWarmup() : ensureScriptsWarmup()
+export function prewarmJrWorkerInBackground(): Promise<unknown | void> {
+  if (prewarmedWorker) return Promise.resolve(prewarmedWorker)
+  if (!prewarmTask) {
+    prewarmTask = ensureScriptsWarmup()
+      .then((base) => {
+        const worker = createReadyWorker(base)
+        prewarmedWorker = worker
+        return worker
+      })
+      .catch((error) => {
+        prewarmTask = null
+        throw error
+      })
+  }
+  return prewarmTask
+}
+
+/** 认领欢迎页预热的 Worker；若无则即时新建（每 PDFUI 实例各一份） */
+export function takeReadyWorkerForInstance(base: FoxitScriptsBundle): unknown {
+  if (prewarmedWorker) {
+    const worker = prewarmedWorker
+    prewarmedWorker = null
+    prewarmTask = null
+    return worker
+  }
+  return createReadyWorker(base)
+}
+
+/**
+ * 预热 Foxit SDK 脚本与 License（全局可共享）。
+ * JR Worker 请对每个 PDFUI 实例单独 create / take。
+ */
+export async function warmupFoxitSdk(): Promise<FoxitScriptsBundle> {
+  return ensureScriptsWarmup()
 }

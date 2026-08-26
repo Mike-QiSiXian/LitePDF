@@ -1,6 +1,6 @@
 {
   "name": "litepdf",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "轻量多标签 PDF 阅读器（Electron + Foxit WebSDK UIExtension）",
   "main": "dist-electron/main.js",
   "author": "LitePDF",
@@ -16,7 +16,8 @@
     "pack": "npm run build && electron-builder --config electron-builder.yml",
     "pack:win": "npm run build && electron-builder --config electron-builder.yml --win",
     "pack:mac": "npm run build && electron-builder --config electron-builder.yml --mac",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "sync:license": "node scripts/sync-license-env.mjs"
   },
   "dependencies": {
     "@foxitsoftware/foxit-pdf-sdk-for-web-library": "^11.1.0",

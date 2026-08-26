@@ -1,5 +1,11 @@
 export type { FoxitViewerAdapter, AdapterCallbacks } from './adapter/types'
+export { toUserFacingErrorMessage } from './errors'
 export { createFoxitViewerAdapter } from './adapter/FoxitViewerAdapter'
 export { ViewerSession, ViewerSessionManager } from './session/ViewerSession'
 export { getLicense } from './license'
-export { warmupFoxitSdk } from './warmup'
+export {
+  createReadyWorker,
+  prewarmJrWorkerInBackground,
+  takeReadyWorkerForInstance,
+  warmupFoxitSdk,
+} from './warmup'

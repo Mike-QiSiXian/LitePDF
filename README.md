@@ -12,9 +12,18 @@
 
 ## 当前版本
 
+### v0.1.4
+
+- **修复多标签共用 `readyWorker`**：每个 PDFUI 实例独立创建 JR Worker，避免第二个 PDF 报 `reading 'sources'`
+- 欢迎页后台预创建首个 Worker（仅首个实例认领），兼顾首开速度与多实例隔离
+- 关于页仅在确实有可下载新版本时展示 Release 说明，避免本地已更新却仍显示旧版更新内容
+- 授权解析同时支持 `var licenseSN = "..."` 与 `licenseSN: "..."`；可用 `npm run sync:license` 同步 `.env`
+- 打开失败时不再用应用层遮罩展示 `-3` 等纯错误码，避免挡住 WebSDK 的「授权无效」弹窗
+- 改善 SDK 返回空错误时的提示文案
+
 ### v0.1.3
 
-- 修复安装版打开 PDF 时报 `Cannot read properties of undefined (reading 'sources')`
+- 修复安装版打开 PDF 时报 `Cannot read properties of undefined (reading 'sources')`（**未完全解决**：曾错误地全局复用 `readyWorker`）
 - 开始页仅预热 SDK 脚本与 License；JR Worker 延至首次打开 PDF 时再创建（与官方示例一致）
 - 移除有问题的 `isSupportFileType` 自定义逻辑，恢复稳定打开流程
 
@@ -58,16 +67,16 @@ npm run dev
 
 - **桌面窗口（推荐）**：`npm run dev` 会同时拉起 Electron，具备系统文件对话框与真实路径。
 - **浏览器调试**：也可打开 `http://localhost:5173/`。无 Electron API 时会自动注入浏览器替身，支持选择/拖入 PDF；刷新后需重新选择文件。
-- **更新检查**：安装版启动后会静默检查 GitHub Release；仅在发现当前系统与架构可用的安装包时提示，并展示更新内容。
-- **首开预热**：工作台空闲时后台加载 Foxit SDK 脚本与 License；JR Worker 在首次打开 PDF 时再创建并复用。
+- **更新检查**：安装版启动后会静默检查 GitHub Release；仅当远端版本高于当前版本且有对应安装包时提示，并展示该新版本的更新内容。
+- **首开预热**：工作台空闲时后台加载 Foxit SDK 脚本与 License，并预创建首个 JR Worker；每个 PDF 标签页仍使用独立 Worker，不可共用。
 
 `predev` / `postinstall` 会：
 
 1. 将 SDK `lib` 链接或复制到 `public/foxit-lib`
 2. 同步 `public/license-key.js` → `.env`（已 gitignore）
 
-**授权文件**：请把正式/最新 License 放到 [`public/license-key.js`](public/license-key.js)。  
-应用运行时**优先读取该文件**；`.env` 仅作回退。替换后需重启开发进程。
+**授权文件**：请把正式/最新 License 放到 `public/license-key.js`（已 gitignore，勿提交仓库）。  
+支持 `var licenseSN = "..."` 与 `licenseSN: "..."` 两种写法。修改后执行 `npm run sync:license` 或重启 `npm run dev`（`predev` 会自动同步 `.env`）。应用运行时优先读取该文件，`.env` 仅作回退。
 
 ## 打包
 

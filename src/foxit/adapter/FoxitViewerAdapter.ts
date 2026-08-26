@@ -3,7 +3,8 @@ import { registerLiteControllers } from '../controllers/registerLiteControllers'
 import { bindToolbarTabs } from '../controllers/ToolbarTabBinder'
 import { bindViewNavButtons } from '../controllers/ViewHistory'
 import { bindUndoRedoButtons } from '../controllers/UndoRedoBinder'
-import { warmupFoxitSdk } from '../warmup'
+import { isRawEngineErrorCode, toUserFacingErrorMessage } from '../errors'
+import { takeReadyWorkerForInstance, warmupFoxitSdk } from '../warmup'
 import '../styles/viewer-chrome.css'
 import type { AdapterCallbacks, FoxitViewerAdapter } from './types'
 
@@ -28,15 +29,46 @@ function resolveViewerEvents(UIExtension: any) {
   )
 }
 
+function isBlankErrorMessage(message: unknown) {
+  const text = String(message ?? '').trim()
+  return !text || text === 'null' || text === 'undefined'
+}
+
 function normalizeOpenError(value: unknown) {
-  if (value instanceof Error) return value
+  const friendly = toUserFacingErrorMessage(value)
+  if (friendly) {
+    const error = value instanceof Error ? value : new Error(friendly)
+    error.message = friendly
+    if (value && typeof value === 'object' && value !== error) Object.assign(error, value)
+    return error
+  }
+
+  if (
+    isRawEngineErrorCode(value) ||
+    (value instanceof Error && isRawEngineErrorCode(value.message)) ||
+    (value && typeof value === 'object' && isRawEngineErrorCode((value as Record<string, unknown>).message))
+  ) {
+    const error = new Error('')
+    if (value && typeof value === 'object') Object.assign(error, value)
+    return error
+  }
+
+  if (value instanceof Error) {
+    if (!isBlankErrorMessage(value.message)) return value
+    return new Error('PDF 引擎未能打开文件，请重试。')
+  }
   if (value && typeof value === 'object') {
     const source = value as Record<string, unknown>
-    const error = new Error(String(source.message || source.error || '打开文件失败'))
+    const raw = source.message ?? source.error
+    const message = isBlankErrorMessage(raw) ? 'PDF 引擎未能打开文件，请重试。' : String(raw)
+    const error = new Error(isRawEngineErrorCode(message) ? '' : message)
     Object.assign(error, source)
     return error
   }
-  return new Error(value == null ? 'PDF 引擎未能打开文件，请重试。' : String(value))
+  if (value == null || isBlankErrorMessage(value)) {
+    return new Error('PDF 引擎未能打开文件，请重试。')
+  }
+  return new Error(String(value))
 }
 
 /** 优先走 SDK 官方 waitForInitialization；事件名 SDK 内为 pdfui-intialization-completed */
@@ -211,7 +243,9 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
           renderTo.style.height = '100%'
           host.appendChild(renderTo)
 
-          const { libPath, UIExtension, readyWorker } = await warmupFoxitSdk()
+          const base = await warmupFoxitSdk()
+          const { libPath, UIExtension } = base
+          const readyWorker = takeReadyWorkerForInstance(base)
 
           // 须在 new PDFUI 之前注册自研 Controller
           registerLiteControllers(UIExtension)

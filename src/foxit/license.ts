@@ -6,8 +6,9 @@ export type LicensePair = {
 }
 
 function parseLicenseScript(text: string): LicensePair | null {
-  const sn = text.match(/licenseSN\s*:\s*"([^"]+)"/)?.[1]
-  const key = text.match(/licenseKey\s*:\s*"([^"]+)"/)?.[1]
+  // 兼容 var licenseSN = "..." 与 licenseSN: "..." 两种官方写法
+  const sn = text.match(/licenseSN\s*[:=]\s*"([^"]+)"/)?.[1]
+  const key = text.match(/licenseKey\s*[:=]\s*"([^"]+)"/)?.[1]
   if (!sn || !key) return null
   return { licenseSN: sn, licenseKey: key }
 }

@@ -107,7 +107,10 @@ onBeforeUnmount(() => {
           <span v-if="result.status === 'available'" class="install-tip">
             下载完成后，请运行安装包完成升级。
           </span>
-          <div v-if="result.releaseNotes && result.latestVersion" class="release-notes">
+          <div
+            v-if="result.status === 'available' && result.releaseNotes && result.latestVersion"
+            class="release-notes"
+          >
             <strong>v{{ result.latestVersion }} 更新内容</strong>
             <pre>{{ result.releaseNotes }}</pre>
           </div>

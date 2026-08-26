@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parseLicenseScript } from './parse-license.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
@@ -103,15 +104,16 @@ if (!exists(licenseDest) && licenseSrc) {
 
 if (licenseTextSource) {
   const text = fs.readFileSync(licenseTextSource, 'utf8')
-  const sn = text.match(/licenseSN\s*:\s*"([^"]+)"/)?.[1]
-  const key = text.match(/licenseKey\s*:\s*"([^"]+)"/)?.[1]
-  if (sn && key) {
+  const parsed = parseLicenseScript(text)
+  if (parsed) {
     fs.writeFileSync(
       envDest,
-      `VITE_FOXIT_LICENSE_SN=${sn}\nVITE_FOXIT_LICENSE_KEY=${key}\n`,
+      `VITE_FOXIT_LICENSE_SN=${parsed.licenseSN}\nVITE_FOXIT_LICENSE_KEY=${parsed.licenseKey}\n`,
       'utf8',
     )
     console.log('[ensure-sdk] 已根据 license-key.js 同步 .env（请勿提交）')
+  } else {
+    console.warn('[ensure-sdk] 无法解析 license-key.js，请检查 SN/Key 格式')
   }
 } else {
   console.warn('[ensure-sdk] 未找到 license-key.js，请自行放到 public/ 或配置 .env')

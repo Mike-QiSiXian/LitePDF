@@ -4,8 +4,9 @@ import TabBar from '@/components/TabBar.vue'
 import WelcomePage from '@/components/WelcomePage.vue'
 import PdfTabHost from '@/components/PdfTabHost.vue'
 import UpdatePromptDialog from '@/components/UpdatePromptDialog.vue'
+import { toUserFacingErrorMessage } from '@/foxit/errors'
 import { ViewerSessionManager } from '@/foxit/session/ViewerSession'
-import { warmupFoxitSdk } from '@/foxit/warmup'
+import { prewarmJrWorkerInBackground, warmupFoxitSdk } from '@/foxit/warmup'
 import { useRecentStore } from '@/stores/recent'
 import { useTabsStore, WELCOME_TAB_ID } from '@/stores/tabs'
 
@@ -43,7 +44,7 @@ function hooksFor(tabId: string) {
     },
     onPasswordRequired: askPassword,
     onError: (error: unknown) => {
-      statusMsg.value = error instanceof Error ? error.message : String(error)
+      statusMsg.value = toUserFacingErrorMessage(error)
     },
   }
 }
@@ -115,8 +116,10 @@ function onSaveShortcut() {
 
 onMounted(() => {
   recent.refresh()
-  // 开始页只预热 SDK 脚本；JR Worker 延至首次打开 PDF 时再创建（与官方示例一致）
-  void warmupFoxitSdk({ preloadWorker: false }).catch(() => undefined)
+  // 开始页预热 SDK 脚本，并后台预创建首个 JR Worker（仅首个 PDFUI 认领，不跨实例共用）
+  void warmupFoxitSdk()
+    .then(() => prewarmJrWorkerInBackground())
+    .catch(() => undefined)
   offOpenFiles = window.litepdf.onOpenFiles((paths) => {
     void openPaths(paths)
   })
