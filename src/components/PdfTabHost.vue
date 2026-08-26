@@ -13,26 +13,38 @@ const error = ref('')
 const loading = ref(false)
 let inflight: Promise<void> | null = null
 
+async function restoreAfterVisible() {
+  await nextTick()
+  await props.session.restoreViewState()
+  // Foxit 在面板重新可见后可能异步重算布局，再补一次恢复更稳妥
+  requestAnimationFrame(() => {
+    void props.session.restoreViewState()
+  })
+}
+
 async function mountIfNeeded() {
   if (!props.active) return
   if (!hostRef.value) {
-    loading.value = true
     await nextTick()
   }
   const host = hostRef.value
   if (!host) return
   if (inflight) return inflight
 
+  const needsLoading = !props.session.isReady()
+
   inflight = (async () => {
-    loading.value = true
+    if (needsLoading) loading.value = true
     error.value = ''
     try {
-      // ensureMounted 在 WebSDK open-file-success 回调里结束
       await props.session.ensureMounted(host)
+      if (props.active) {
+        await restoreAfterVisible()
+      }
     } catch (e: unknown) {
       error.value = toUserFacingErrorMessageWithFallback(e)
     } finally {
-      loading.value = false
+      if (needsLoading) loading.value = false
     }
   })().finally(() => {
     inflight = null
@@ -48,13 +60,17 @@ onMounted(() => {
 watch(
   () => props.active,
   (active) => {
-    if (active) void mountIfNeeded()
+    if (active) {
+      void mountIfNeeded()
+      return
+    }
+    void props.session.captureViewState()
   },
 )
 </script>
 
 <template>
-  <div class="lp-panel" :hidden="!active">
+  <div class="lp-panel" :class="active ? 'is-active' : 'is-inactive'">
     <div v-if="loading" class="state">正在加载 PDF…</div>
     <div v-else-if="error" class="state error">{{ error }}</div>
     <div ref="hostRef" class="lp-viewer-host" />

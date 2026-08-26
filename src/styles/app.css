@@ -72,6 +72,18 @@ button {
   display: none !important;
 }
 
+.lp-panel.is-inactive {
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.lp-panel.is-active {
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 1;
+}
+
 .lp-viewer-host {
   width: 100%;
   height: 100%;

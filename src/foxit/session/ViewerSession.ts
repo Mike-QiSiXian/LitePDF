@@ -1,5 +1,6 @@
 import { createFoxitViewerAdapter } from '../adapter/FoxitViewerAdapter'
 import type { FoxitViewerAdapter } from '../adapter/types'
+import type { ViewSnapshot } from '../controllers/ViewHistory'
 
 export class ViewerSession {
   readonly id: string
@@ -10,6 +11,7 @@ export class ViewerSession {
   private host: HTMLElement | null = null
   private mountPromise: Promise<void> | null = null
   private openPromise: Promise<void> | null = null
+  private savedViewState: ViewSnapshot | null = null
 
   constructor(
     id: string,
@@ -79,6 +81,29 @@ export class ViewerSession {
     await this.ensureDocument()
   }
 
+  isReady() {
+    return this.mounted && this.opened
+  }
+
+  async captureViewState() {
+    if (!this.adapter || !this.opened) return
+    try {
+      const snap = await this.adapter.captureViewState()
+      if (snap) this.savedViewState = snap
+    } catch {
+      // ignore
+    }
+  }
+
+  async restoreViewState() {
+    if (!this.savedViewState || !this.adapter || !this.opened) return
+    try {
+      await this.adapter.restoreViewState(this.savedViewState)
+    } catch {
+      // ignore
+    }
+  }
+
   async saveAs(filePath: string) {
     if (!this.adapter) throw new Error('会话尚未初始化')
     await this.adapter.saveTo(filePath)
@@ -96,6 +121,7 @@ export class ViewerSession {
     this.mountPromise = null
     this.openPromise = null
     this.host = null
+    this.savedViewState = null
   }
 }
 

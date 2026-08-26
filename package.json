@@ -1,6 +1,6 @@
 {
   "name": "litepdf",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "轻量多标签 PDF 阅读器（Electron + Foxit WebSDK UIExtension）",
   "main": "dist-electron/main.js",
   "author": "LitePDF",

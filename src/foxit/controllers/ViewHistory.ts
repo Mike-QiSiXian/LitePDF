@@ -64,6 +64,17 @@ function readViewModeName(viewer: any, hintName?: string): string {
   return DEFAULT_VIEW_MODE
 }
 
+export async function captureViewSnapshot(
+  pdfui: any,
+  hint: SnapshotHint = {},
+): Promise<ViewSnapshot | null> {
+  return readSnapshot(pdfui, hint)
+}
+
+export async function restoreViewSnapshot(pdfui: any, snap: ViewSnapshot): Promise<void> {
+  await applySnapshot(pdfui, snap)
+}
+
 async function readSnapshot(pdfui: any, hint: SnapshotHint = {}): Promise<ViewSnapshot | null> {
   try {
     const viewer = await pdfui.getPDFViewer?.()

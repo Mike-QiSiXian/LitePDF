@@ -86,10 +86,12 @@ onBeforeUnmount(() => {
           ×
         </button>
 
-        <img class="about-logo" :src="logoUrl" alt="" aria-hidden="true" />
-        <h2 id="about-title">LitePDF</h2>
-        <p class="about-subtitle">轻量、专注的多标签 PDF 阅读器</p>
-        <p class="about-version">当前版本 v{{ version }}</p>
+        <div class="about-header">
+          <img class="about-logo" :src="logoUrl" alt="" aria-hidden="true" />
+          <h2 id="about-title">LitePDF</h2>
+          <p class="about-subtitle">轻量、专注的多标签 PDF 阅读器</p>
+          <p class="about-version">当前版本 v{{ version }}</p>
+        </div>
 
         <div
           v-if="result"
@@ -97,16 +99,18 @@ onBeforeUnmount(() => {
           :class="`is-${result.status}`"
           role="status"
         >
-          <strong v-if="result.status === 'available'">
-            发现新版本 v{{ result.latestVersion }}
-          </strong>
-          <strong v-else-if="result.status === 'up-to-date'">当前已是最新版本</strong>
-          <strong v-else-if="result.status === 'error'">检查更新失败</strong>
-          <strong v-else>暂时无法检查更新</strong>
-          <span>{{ result.message }}</span>
-          <span v-if="result.status === 'available'" class="install-tip">
-            下载完成后，请运行安装包完成升级。
-          </span>
+          <div class="update-summary">
+            <strong v-if="result.status === 'available'">
+              发现新版本 v{{ result.latestVersion }}
+            </strong>
+            <strong v-else-if="result.status === 'up-to-date'">当前已是最新版本</strong>
+            <strong v-else-if="result.status === 'error'">检查更新失败</strong>
+            <strong v-else>暂时无法检查更新</strong>
+            <span>{{ result.message }}</span>
+            <span v-if="result.status === 'available'" class="install-tip">
+              下载完成后，请运行安装包完成升级。
+            </span>
+          </div>
           <div
             v-if="result.status === 'available' && result.releaseNotes && result.latestVersion"
             class="release-notes"
@@ -116,8 +120,9 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="about-actions">
-          <button
+        <div class="about-footer">
+          <div class="about-actions">
+            <button
             v-if="result?.status === 'available' && result.downloadUrl"
             type="button"
             class="primary-btn"
@@ -136,9 +141,10 @@ onBeforeUnmount(() => {
             {{ checking ? '正在检查…' : '检查更新' }}
           </button>
           <button type="button" class="secondary-btn" @click="emit('close')">关闭</button>
-        </div>
+          </div>
 
-        <p class="about-copyright">Copyright © LitePDF</p>
+          <p class="about-copyright">Copyright © LitePDF</p>
+        </div>
       </section>
     </div>
   </Teleport>
@@ -158,7 +164,10 @@ onBeforeUnmount(() => {
 
 .about-dialog {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: min(420px, calc(100vw - 48px));
+  max-height: min(680px, calc(100vh - 48px));
   box-sizing: border-box;
   padding: 34px 36px 28px;
   border: 1px solid #e6e8ee;
@@ -167,6 +176,11 @@ onBeforeUnmount(() => {
   color: #1f2329;
   text-align: center;
   box-shadow: 0 22px 60px rgba(15, 23, 42, 0.2);
+  overflow: hidden;
+}
+
+.about-header {
+  flex-shrink: 0;
 }
 
 .about-close {
@@ -221,7 +235,9 @@ h2 {
 .update-result {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  flex: 1 1 auto;
+  gap: 0;
+  min-height: 0;
   margin: 0 0 18px;
   padding: 12px 14px;
   border: 1px solid #e5e7eb;
@@ -231,6 +247,14 @@ h2 {
   font-size: 12px;
   line-height: 1.5;
   text-align: left;
+  overflow: hidden;
+}
+
+.update-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
 }
 
 .update-result strong {
@@ -261,18 +285,29 @@ h2 {
 }
 
 .release-notes {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   margin-top: 6px;
   padding-top: 10px;
   border-top: 1px solid rgba(148, 163, 184, 0.3);
 }
 
 .release-notes pre {
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 6px 0 0;
+  overflow-y: auto;
   overflow-wrap: anywhere;
   color: #475569;
   font: inherit;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.about-footer {
+  flex-shrink: 0;
 }
 
 .about-actions {
@@ -317,7 +352,7 @@ h2 {
 }
 
 .about-copyright {
-  margin: 22px 0 0;
+  margin: 14px 0 0;
   color: #a1a8b5;
   font-size: 11px;
 }

@@ -33,11 +33,13 @@ function formatDate(value?: string) {
     <div class="update-mask" role="presentation" @mousedown.self="emit('close')">
       <section class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="update-title">
         <button type="button" class="close-btn" aria-label="稍后提醒" @click="emit('close')">×</button>
-        <div class="update-badge">新版本</div>
-        <h2 id="update-title">LitePDF v{{ result.latestVersion }}</h2>
-        <p v-if="result.publishedAt" class="published-at">
-          发布于 {{ formatDate(result.publishedAt) }}
-        </p>
+        <div class="update-header">
+          <div class="update-badge">新版本</div>
+          <h2 id="update-title">LitePDF v{{ result.latestVersion }}</h2>
+          <p v-if="result.publishedAt" class="published-at">
+            发布于 {{ formatDate(result.publishedAt) }}
+          </p>
+        </div>
         <div class="release-notes">
           <h3>更新内容</h3>
           <pre>{{ result.releaseNotes || '本版本暂无更新说明。' }}</pre>
@@ -72,16 +74,22 @@ function formatDate(value?: string) {
 
 .update-dialog {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: min(520px, calc(100vw - 48px));
   max-height: min(680px, calc(100vh - 48px));
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden;
   padding: 30px 32px 28px;
   border: 1px solid #e5e7eb;
   border-radius: 18px;
   background: #fff;
   color: #1f2937;
   box-shadow: 0 24px 72px rgba(15, 23, 42, 0.24);
+}
+
+.update-header {
+  flex-shrink: 0;
 }
 
 .close-btn {
@@ -117,6 +125,10 @@ h2 {
 }
 
 .release-notes {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 16px;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
@@ -124,12 +136,16 @@ h2 {
 }
 
 .release-notes h3 {
+  flex-shrink: 0;
   margin: 0 0 10px;
   font-size: 14px;
 }
 
 .release-notes pre {
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 0;
+  overflow-y: auto;
   overflow-wrap: anywhere;
   color: #475569;
   font: inherit;
@@ -142,6 +158,7 @@ h2 {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  flex-shrink: 0;
   margin-top: 22px;
 }
 

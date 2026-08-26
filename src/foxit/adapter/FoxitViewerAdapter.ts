@@ -1,7 +1,12 @@
 import { createLiteAppearance } from '../appearance/LiteAppearance'
 import { registerLiteControllers } from '../controllers/registerLiteControllers'
 import { bindToolbarTabs } from '../controllers/ToolbarTabBinder'
-import { bindViewNavButtons } from '../controllers/ViewHistory'
+import {
+  bindViewNavButtons,
+  captureViewSnapshot,
+  restoreViewSnapshot,
+  type ViewSnapshot,
+} from '../controllers/ViewHistory'
 import { bindUndoRedoButtons } from '../controllers/UndoRedoBinder'
 import { isRawEngineErrorCode, toUserFacingErrorMessage } from '../errors'
 import { takeReadyWorkerForInstance, warmupFoxitSdk } from '../warmup'
@@ -370,6 +375,16 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
 
     getFileName() {
       return toFileName(currentPath)
+    },
+
+    async captureViewState() {
+      if (!pdfui) return null
+      return captureViewSnapshot(pdfui)
+    },
+
+    async restoreViewState(snapshot: ViewSnapshot) {
+      if (!pdfui) return
+      await restoreViewSnapshot(pdfui, snapshot)
     },
 
     async destroy() {
