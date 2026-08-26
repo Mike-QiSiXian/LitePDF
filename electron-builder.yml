@@ -14,7 +14,7 @@ electronLanguages:
   - en-US
   - zh-CN
   - zh-TW
-# SDK 只通过 extraResources 各带一份；fontPath 必须指向 foxit-external/brotli
+# SDK 核心库通过 extraResources 带一份；有本地 external 时一并打包（否则运行时用官方 webfonts）
 extraResources:
   - from: public/foxit-lib
     to: foxit-lib

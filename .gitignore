@@ -8,6 +8,7 @@ release/
 .env.local
 public/foxit-lib
 public/foxit-external
+public/foxit-font-source.json
 public/license-key.js
 .vscode/
 .idea/

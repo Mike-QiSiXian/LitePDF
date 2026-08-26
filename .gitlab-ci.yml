@@ -15,7 +15,7 @@ cache:
   before_script:
     - npm ci
 
-# Windows / macOS 安装包需在对应 runner 上执行，并自行注入 FOXIT_SDK_LIB 与 License
+# Windows / macOS 安装包需在对应 runner 上执行，并自行注入 License（核心库由 npm 包提供）
 build:win:
   stage: build
   tags: [windows]

@@ -23,6 +23,17 @@ async function resolveLibPath() {
 }
 
 async function resolveFontPath() {
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}foxit-font-source.json`, {
+      cache: 'no-store',
+    })
+    if (res.ok) {
+      const cfg = (await res.json()) as { mode?: string; fontPath?: string }
+      if (cfg.mode === 'cdn' && cfg.fontPath) return cfg.fontPath.replace(/\/?$/, '/')
+    }
+  } catch {
+    // 无配置时回退本地或官方 webfonts
+  }
   if (window.litepdf?.getFoxitExternalUrl) {
     return `${(await window.litepdf.getFoxitExternalUrl()).replace(/\/$/, '')}/brotli`
   }
@@ -281,6 +292,18 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
           })
           pdfui.__litepdfUIExtension = UIExtension
           pdfui.__litepdfFullscreenCleanup = bindPresentationFullscreenSync(pdfui)
+
+          // 初始化完成后直接授予本机字体权限，不弹框（配合 Electron local-fonts 缺省允许）
+          pdfui.addUIEventListener(
+            UIExtension.UIEvents.initializationCompleted,
+            async () => {
+              try {
+                await pdfui.grantQueryLocalFontsPermission('granted')
+              } catch {
+                // 非 Electron / 不支持 Local Font Access 时忽略
+              }
+            },
+          )
 
           // 文件名与导航绑定不阻塞 mount，避免拖住后续 openFile
           void setFilenameLabel(pdfui, '未打开文件')

@@ -5,11 +5,17 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
 const target = path.join(root, 'public', 'foxit-lib')
-const source =
-  process.env.FOXIT_SDK_LIB ||
-  'C:\\WorkSpaceForOpenCode\\FoxitWebSDKStudy\\sdk\\lib'
+const npmLib = path.join(
+  root,
+  'node_modules',
+  '@foxitsoftware',
+  'foxit-pdf-sdk-for-web-library',
+  'lib',
+)
+const studyLib = 'C:\\WorkSpaceForOpenCode\\FoxitWebSDKStudy\\sdk\\lib'
 const externalTarget = path.join(root, 'public', 'foxit-external')
-const externalSource = path.join(path.dirname(source), 'external')
+const fontSourceDest = path.join(root, 'public', 'foxit-font-source.json')
+const CDN_FONTS = 'https://webpdf.foxitsoftware.com/webfonts/'
 
 function exists(p) {
   try {
@@ -20,46 +26,111 @@ function exists(p) {
   }
 }
 
-function ensureJunction(from, to, label) {
+function isLink(p) {
+  try {
+    return fs.lstatSync(p).isSymbolicLink()
+  } catch {
+    return false
+  }
+}
+
+function resolveLibSource() {
+  if (process.env.FOXIT_SDK_LIB) return process.env.FOXIT_SDK_LIB
+  if (exists(path.join(npmLib, 'UIExtension.full.js'))) return npmLib
+  if (exists(studyLib)) return studyLib
+  return null
+}
+
+function resolveExternalSource(libSource) {
+  if (process.env.FOXIT_SDK_EXTERNAL) return process.env.FOXIT_SDK_EXTERNAL
+  const sibling = path.join(path.dirname(libSource), 'external')
+  if (exists(sibling)) return sibling
+  return null
+}
+
+function ensureLinked(from, to, label) {
   if (exists(to)) {
-    console.log(`[ensure-sdk] ${label} 已就绪: ${to}`)
-    return
+    if (isLink(to)) {
+      try {
+        if (path.resolve(fs.realpathSync(to)) === path.resolve(from)) {
+          console.log(`[ensure-sdk] ${label} 已就绪: ${to}`)
+          return true
+        }
+      } catch {
+        // 失效链接，下面重建
+      }
+      fs.unlinkSync(to)
+    } else if (exists(path.join(to, 'UIExtension.full.js')) || exists(path.join(to, 'brotli'))) {
+      console.log(`[ensure-sdk] ${label} 已存在本地目录，跳过: ${to}`)
+      return true
+    } else {
+      fs.rmSync(to, { recursive: true, force: true })
+    }
   }
   if (!exists(from)) {
     console.warn(`[ensure-sdk] 跳过 ${label}，源不存在: ${from}`)
-    return
+    return false
   }
   fs.mkdirSync(path.dirname(to), { recursive: true })
   try {
-    fs.symlinkSync(from, to, 'junction')
-    console.log(`[ensure-sdk] 已创建 ${label} junction: ${to} -> ${from}`)
+    fs.symlinkSync(from, to, process.platform === 'win32' ? 'junction' : 'dir')
+    console.log(`[ensure-sdk] 已创建 ${label} 链接: ${to} -> ${from}`)
+    return true
   } catch (err) {
-    console.warn(`[ensure-sdk] ${label} junction 失败，尝试复制…`, err.message)
+    console.warn(`[ensure-sdk] ${label} 链接失败，尝试复制…`, err.message)
     fs.cpSync(from, to, { recursive: true })
     console.log(`[ensure-sdk] 已复制 ${label} 到 ${to}`)
+    return true
   }
 }
 
-if (!exists(source)) {
-  console.error(`[ensure-sdk] 找不到 SDK lib: ${source}`)
-  console.error('请设置环境变量 FOXIT_SDK_LIB 指向 Foxit WebSDK 的 lib 目录')
+function writeFontSource(mode) {
+  const payload =
+    mode === 'local'
+      ? { mode: 'local' }
+      : { mode: 'cdn', fontPath: CDN_FONTS }
+  fs.mkdirSync(path.dirname(fontSourceDest), { recursive: true })
+  fs.writeFileSync(fontSourceDest, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+  console.log(`[ensure-sdk] 字体来源: ${mode === 'local' ? '本地 foxit-external/brotli' : CDN_FONTS}`)
+}
+
+const source = resolveLibSource()
+if (!source || !exists(source)) {
+  console.error('[ensure-sdk] 找不到 Foxit WebSDK lib')
+  console.error('请先执行: npm install @foxitsoftware/foxit-pdf-sdk-for-web-library')
+  console.error('或设置 FOXIT_SDK_LIB 指向本地 lib 目录')
   process.exit(1)
 }
 
-ensureJunction(source, target, 'foxit-lib')
-ensureJunction(externalSource, externalTarget, 'foxit-external')
+console.log(`[ensure-sdk] 使用 lib: ${source}`)
+ensureLinked(source, target, 'foxit-lib')
 
-const licenseSrc = path.join(path.dirname(source), 'examples', 'license-key.js')
+const externalSource = resolveExternalSource(source)
+if (externalSource) {
+  ensureLinked(externalSource, externalTarget, 'foxit-external')
+  writeFontSource('local')
+} else if (exists(path.join(externalTarget, 'brotli'))) {
+  writeFontSource('local')
+  console.log(`[ensure-sdk] 使用已有本地字体: ${externalTarget}`)
+} else {
+  fs.mkdirSync(externalTarget, { recursive: true })
+  writeFontSource('cdn')
+  console.warn(
+    '[ensure-sdk] npm 包不含 external/brotli，将使用官方 Vue3 示例相同的 webfonts。若需离线中文字体，请设置 FOXIT_SDK_EXTERNAL。',
+  )
+}
+
+const licenseCandidates = [
+  path.join(root, 'public', 'license-key.js'),
+  path.join(path.dirname(source), 'examples', 'license-key.js'),
+  path.join(path.dirname(path.dirname(source)), 'examples', 'license-key.js'),
+]
 const licenseDest = path.join(root, 'public', 'license-key.js')
 const envDest = path.join(root, '.env')
-// 优先保留开发者已放在 public/license-key.js 的最新授权；仅在缺失时从学习仓复制
-const licenseTextSource = exists(licenseDest)
-  ? licenseDest
-  : exists(licenseSrc)
-    ? licenseSrc
-    : null
+const licenseSrc = licenseCandidates.find((p) => p !== licenseDest && exists(p))
+const licenseTextSource = exists(licenseDest) ? licenseDest : licenseSrc || null
 
-if (!exists(licenseDest) && exists(licenseSrc)) {
+if (!exists(licenseDest) && licenseSrc) {
   fs.copyFileSync(licenseSrc, licenseDest)
   console.log(`[ensure-sdk] 已复制 license-key.js -> ${licenseDest}`)
 }
@@ -69,7 +140,6 @@ if (licenseTextSource) {
   const sn = text.match(/licenseSN\s*:\s*"([^"]+)"/)?.[1]
   const key = text.match(/licenseKey\s*:\s*"([^"]+)"/)?.[1]
   if (sn && key) {
-    // 始终用当前 license-key.js 同步 .env，避免旧 .env 覆盖新授权
     fs.writeFileSync(
       envDest,
       `VITE_FOXIT_LICENSE_SN=${sn}\nVITE_FOXIT_LICENSE_KEY=${key}\n`,

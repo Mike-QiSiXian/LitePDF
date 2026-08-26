@@ -6,6 +6,7 @@ import {
   Menu,
   net,
   protocol,
+  session,
   shell,
 } from 'electron'
 import fs from 'node:fs'
@@ -433,6 +434,20 @@ if (!gotLock) {
   }
 
   app.whenReady().then(() => {
+    // Local Font Access：缺省允许，避免运行时弹「询问」导致未嵌入字体的 PDF 缺字
+    const ses = session.defaultSession
+    ses.setPermissionCheckHandler((_wc, permission) => {
+      if (permission === 'local-fonts') return true
+      return true
+    })
+    ses.setPermissionRequestHandler((_wc, permission, callback) => {
+      if (permission === 'local-fonts') {
+        callback(true)
+        return
+      }
+      callback(true)
+    })
+
     registerFoxitProtocol()
     registerIpc()
     createWindow()

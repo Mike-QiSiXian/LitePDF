@@ -55,6 +55,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    headers: {
+      'Service-Worker-Allowed': '/',
+    },
   },
   build: {
     outDir: 'dist',
