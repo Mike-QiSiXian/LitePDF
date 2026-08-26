@@ -12,11 +12,17 @@
 
 ## 当前版本
 
+### v0.1.3
+
+- 修复安装版打开 PDF 时报 `Cannot read properties of undefined (reading 'sources')`
+- 开始页仅预热 SDK 脚本与 License；JR Worker 延至首次打开 PDF 时再创建（与官方示例一致）
+- 移除有问题的 `isSupportFileType` 自定义逻辑，恢复稳定打开流程
+
 ### v0.1.2
 
 - 开始页后台预热 Foxit SDK、License 和 JR Worker，首次打开 PDF 时复用预热结果
 - 使用 SDK 官方 `waitForInitialization()` 判断 PDFUI 就绪，修复安装版初始化超时
-- 改进 PDF 文件类型识别、打开失败提示和超时处理
+- 改进 PDF 打开失败提示和超时处理
 - 安装版启动后静默检查更新，并在关于窗口中展示 Release 说明
 - 增加 LitePDF 品牌图标及 Windows/macOS 打包图标配置
 - 更新检查按操作系统和架构选择安装包，避免 macOS 错选 Windows 附件
@@ -53,7 +59,7 @@ npm run dev
 - **桌面窗口（推荐）**：`npm run dev` 会同时拉起 Electron，具备系统文件对话框与真实路径。
 - **浏览器调试**：也可打开 `http://localhost:5173/`。无 Electron API 时会自动注入浏览器替身，支持选择/拖入 PDF；刷新后需重新选择文件。
 - **更新检查**：安装版启动后会静默检查 GitHub Release；仅在发现当前系统与架构可用的安装包时提示，并展示更新内容。
-- **首开预热**：工作台空闲时后台加载 Foxit SDK、License 与 JR Worker，打开首个 PDF 时直接复用。
+- **首开预热**：工作台空闲时后台加载 Foxit SDK 脚本与 License；JR Worker 在首次打开 PDF 时再创建并复用。
 
 `predev` / `postinstall` 会：
 

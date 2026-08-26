@@ -115,8 +115,8 @@ function onSaveShortcut() {
 
 onMounted(() => {
   recent.refresh()
-  // 开始页展示期间后台预热 SDK / Worker，首开 PDF 更快
-  void warmupFoxitSdk().catch(() => undefined)
+  // 开始页只预热 SDK 脚本；JR Worker 延至首次打开 PDF 时再创建（与官方示例一致）
+  void warmupFoxitSdk({ preloadWorker: false }).catch(() => undefined)
   offOpenFiles = window.litepdf.onOpenFiles((paths) => {
     void openPaths(paths)
   })

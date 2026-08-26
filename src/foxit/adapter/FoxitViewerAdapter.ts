@@ -229,13 +229,6 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
           pdfui = new UIExtension.PDFUI({
             viewerOptions: {
               libPath,
-              customs: {
-                // LitePDF 的入口只接收 PDF；绕过 SDK 11.1.0 对 File 的误判与 null rejection
-                isSupportFileType: (input: File) =>
-                  !input?.name ||
-                  input.type === 'application/pdf' ||
-                  /\.pdf$/i.test(input.name),
-              },
               jr: {
                 readyWorker,
               },
