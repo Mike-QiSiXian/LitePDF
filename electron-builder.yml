@@ -9,12 +9,14 @@ files:
   - dist-electron/**/*
   - '!dist/foxit-lib/**'
   - '!dist/foxit-external/**'
+  # 运行时只走 extraResources 的 foxit-lib，避免 npm 整包再打进 asar
+  - '!node_modules/@foxitsoftware/**'
 # Chromium 语言包只留中英文，避免 locales 再占约 40MB
 electronLanguages:
   - en-US
   - zh-CN
   - zh-TW
-# SDK 核心库通过 extraResources 带一份；有本地 external 时一并打包（否则运行时用官方 webfonts）
+# SDK 核心库只通过 extraResources 带一份；字体走官方 webfonts + 本机 Local Font Access
 extraResources:
   - from: public/foxit-lib
     to: foxit-lib
@@ -35,8 +37,6 @@ extraResources:
       - '!**/locales/ja-JP/**'
       - '!**/locales/ko-KR/**'
       - '!**/locales/nl-NL/**'
-  - from: public/foxit-external
-    to: foxit-external
 asar: true
 win:
   target:

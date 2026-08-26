@@ -22,22 +22,9 @@ async function resolveLibPath() {
   return `${window.location.origin}/foxit-lib`
 }
 
-async function resolveFontPath() {
-  try {
-    const res = await fetch(`${import.meta.env.BASE_URL}foxit-font-source.json`, {
-      cache: 'no-store',
-    })
-    if (res.ok) {
-      const cfg = (await res.json()) as { mode?: string; fontPath?: string }
-      if (cfg.mode === 'cdn' && cfg.fontPath) return cfg.fontPath.replace(/\/?$/, '/')
-    }
-  } catch {
-    // 无配置时回退本地或官方 webfonts
-  }
-  if (window.litepdf?.getFoxitExternalUrl) {
-    return `${(await window.litepdf.getFoxitExternalUrl()).replace(/\/$/, '')}/brotli`
-  }
-  return `${window.location.origin}/foxit-external/brotli`
+/** 与官方 Vue3 示例一致；未嵌入字体再靠 Local Font Access 走本机字体 */
+function resolveFontPath() {
+  return 'https://webpdf.foxitsoftware.com/webfonts/'
 }
 
 let sdkLoadPromise: Promise<any> | null = null
@@ -250,7 +237,7 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
           host.appendChild(renderTo)
 
           const libPath = await resolveLibPath()
-          const fontPath = await resolveFontPath()
+          const fontPath = resolveFontPath()
           const UIExtension = await ensureUIExtension(libPath)
           const { licenseSN, licenseKey } = await getLicense()
 

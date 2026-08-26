@@ -13,9 +13,6 @@ const npmLib = path.join(
   'lib',
 )
 const studyLib = 'C:\\WorkSpaceForOpenCode\\FoxitWebSDKStudy\\sdk\\lib'
-const externalTarget = path.join(root, 'public', 'foxit-external')
-const fontSourceDest = path.join(root, 'public', 'foxit-font-source.json')
-const CDN_FONTS = 'https://webpdf.foxitsoftware.com/webfonts/'
 
 function exists(p) {
   try {
@@ -41,13 +38,6 @@ function resolveLibSource() {
   return null
 }
 
-function resolveExternalSource(libSource) {
-  if (process.env.FOXIT_SDK_EXTERNAL) return process.env.FOXIT_SDK_EXTERNAL
-  const sibling = path.join(path.dirname(libSource), 'external')
-  if (exists(sibling)) return sibling
-  return null
-}
-
 function ensureLinked(from, to, label) {
   if (exists(to)) {
     if (isLink(to)) {
@@ -60,7 +50,7 @@ function ensureLinked(from, to, label) {
         // 失效链接，下面重建
       }
       fs.unlinkSync(to)
-    } else if (exists(path.join(to, 'UIExtension.full.js')) || exists(path.join(to, 'brotli'))) {
+    } else if (exists(path.join(to, 'UIExtension.full.js'))) {
       console.log(`[ensure-sdk] ${label} 已存在本地目录，跳过: ${to}`)
       return true
     } else {
@@ -84,16 +74,6 @@ function ensureLinked(from, to, label) {
   }
 }
 
-function writeFontSource(mode) {
-  const payload =
-    mode === 'local'
-      ? { mode: 'local' }
-      : { mode: 'cdn', fontPath: CDN_FONTS }
-  fs.mkdirSync(path.dirname(fontSourceDest), { recursive: true })
-  fs.writeFileSync(fontSourceDest, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
-  console.log(`[ensure-sdk] 字体来源: ${mode === 'local' ? '本地 foxit-external/brotli' : CDN_FONTS}`)
-}
-
 const source = resolveLibSource()
 if (!source || !exists(source)) {
   console.error('[ensure-sdk] 找不到 Foxit WebSDK lib')
@@ -104,21 +84,7 @@ if (!source || !exists(source)) {
 
 console.log(`[ensure-sdk] 使用 lib: ${source}`)
 ensureLinked(source, target, 'foxit-lib')
-
-const externalSource = resolveExternalSource(source)
-if (externalSource) {
-  ensureLinked(externalSource, externalTarget, 'foxit-external')
-  writeFontSource('local')
-} else if (exists(path.join(externalTarget, 'brotli'))) {
-  writeFontSource('local')
-  console.log(`[ensure-sdk] 使用已有本地字体: ${externalTarget}`)
-} else {
-  fs.mkdirSync(externalTarget, { recursive: true })
-  writeFontSource('cdn')
-  console.warn(
-    '[ensure-sdk] npm 包不含 external/brotli，将使用官方 Vue3 示例相同的 webfonts。若需离线中文字体，请设置 FOXIT_SDK_EXTERNAL。',
-  )
-}
+console.log('[ensure-sdk] 字体使用官方 webfonts + Local Font Access，不准备 foxit-external')
 
 const licenseCandidates = [
   path.join(root, 'public', 'license-key.js'),

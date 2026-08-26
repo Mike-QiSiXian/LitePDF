@@ -30,7 +30,7 @@ npm install --ignore-scripts -S @foxitsoftware/foxit-pdf-sdk-for-web-library
 
 `ensure-sdk` 会把 `node_modules/@foxitsoftware/foxit-pdf-sdk-for-web-library/lib` 链接到 `public/foxit-lib`。可用环境变量 `FOXIT_SDK_LIB` 覆盖为本地 lib 目录。
 
-npm 包不含 `external/brotli`。默认与官方 Vue3 示例一致，使用官方 webfonts 作为 `jr.fontPath`。若需离线中文字体，设置 `FOXIT_SDK_EXTERNAL` 指向完整 SDK 的 `external` 目录。
+字体：`jr.fontPath` 缺省使用官方 webfonts（与 Vue3 示例一致）；Electron 内再通过 `grantQueryLocalFontsPermission` 读取本机字体，安装包不携带 `foxit-external`。
 
 ## 快速开始
 
@@ -67,9 +67,9 @@ npm run pack:mac
 
 安装包体积说明：
 
-- SDK 核心库只通过 `extraResources` 带一份 `foxit-lib`，不会再打进 `app.asar`
+- SDK 核心库只通过 `extraResources` 带一份 `foxit-lib`；npm 包本身不打进 `app.asar`
 - 图章 / 词条只保留 `zh-CN`、`zh-TW`、`en-US`
-- 若存在本地 `foxit-external`，会一并打进安装包，`jr.fontPath` 指向其中的 `brotli`；否则使用官方 webfonts
+- 不打包 `foxit-external`：回退字体用官方 webfonts，文档字体走本机 Local Font Access
 - Electron 语言包同样只保留中英文
 
 代码签名/Apple 公证未强制启用，可按发布需要补充证书环境变量。
