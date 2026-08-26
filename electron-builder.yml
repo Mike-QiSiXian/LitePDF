@@ -37,8 +37,11 @@ extraResources:
       - '!**/locales/ja-JP/**'
       - '!**/locales/ko-KR/**'
       - '!**/locales/nl-NL/**'
+  - from: resources/icon.png
+    to: icon.png
 asar: true
 win:
+  icon: resources/icon.png
   target:
     - target: nsis
       arch:
@@ -51,6 +54,7 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: LitePDF
 mac:
+  icon: resources/icon.icns
   target:
     - target: dmg
       arch:

@@ -3,8 +3,7 @@ import { registerLiteControllers } from '../controllers/registerLiteControllers'
 import { bindToolbarTabs } from '../controllers/ToolbarTabBinder'
 import { bindViewNavButtons } from '../controllers/ViewHistory'
 import { bindUndoRedoButtons } from '../controllers/UndoRedoBinder'
-import { getLicense } from '../license'
-import shellResetCssUrl from '../styles/foxit-shell-reset.css?url'
+import { warmupFoxitSdk } from '../warmup'
 import '../styles/viewer-chrome.css'
 import type { AdapterCallbacks, FoxitViewerAdapter } from './types'
 
@@ -15,74 +14,7 @@ declare global {
   }
 }
 
-async function resolveLibPath() {
-  if (window.litepdf?.getFoxitLibUrl) {
-    return (await window.litepdf.getFoxitLibUrl()).replace(/\/$/, '')
-  }
-  return `${window.location.origin}/foxit-lib`
-}
-
-/** 与官方 Vue3 示例一致；未嵌入字体再靠 Local Font Access 走本机字体 */
-function resolveFontPath() {
-  return 'https://webpdf.foxitsoftware.com/webfonts/'
-}
-
-let sdkLoadPromise: Promise<any> | null = null
-
-async function loadScript(src: string) {
-  await new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`)
-    if (existing) {
-      resolve()
-      return
-    }
-    const script = document.createElement('script')
-    script.src = src
-    script.async = false
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error(`加载脚本失败: ${src}`))
-    document.head.appendChild(script)
-  })
-}
-
-function ensureCss(href: string) {
-  if (document.querySelector(`link[href="${href}"]`)) return
-  const link = document.createElement('link')
-  link.rel = 'stylesheet'
-  link.href = href
-  document.head.appendChild(link)
-}
-
-/** 在 Foxit 全局样式之后强制恢复应用壳全宽，避免整窗被挤成窄条 */
-function ensureShellResetCss() {
-  const id = 'litepdf-foxit-shell-reset'
-  let link = document.getElementById(id) as HTMLLinkElement | null
-  if (!link) {
-    link = document.createElement('link')
-    link.id = id
-    link.rel = 'stylesheet'
-    link.href = shellResetCssUrl
-  }
-  // 始终挪到 head 末尾，保证压过 UIExtension.css
-  document.head.appendChild(link)
-}
-
-async function ensureUIExtension(libPath: string) {
-  // 每次都确保 reset 在 Foxit CSS 之后（HMR / 二次 mount 也要覆盖）
-  ensureCss(`${libPath}/UIExtension.css`)
-  ensureShellResetCss()
-
-  if (window.UIExtension?.PDFUI) return window.UIExtension
-  if (!sdkLoadPromise) {
-    sdkLoadPromise = (async () => {
-      await loadScript(`${libPath}/preload-jr-worker.js`)
-      await loadScript(`${libPath}/UIExtension.full.js`)
-      if (!window.UIExtension) throw new Error('UIExtension 未能加载')
-      return window.UIExtension
-    })()
-  }
-  return sdkLoadPromise
-}
+const PDFUI_INIT_TIMEOUT_MS = 60000
 
 function toFileName(filePath: string) {
   return filePath.split(/[/\\]/).pop() || 'document.pdf'
@@ -94,6 +26,45 @@ function resolveViewerEvents(UIExtension: any) {
     UIExtension?.PDFViewCtrl?.ViewerEvents ||
     {}
   )
+}
+
+function normalizeOpenError(value: unknown) {
+  if (value instanceof Error) return value
+  if (value && typeof value === 'object') {
+    const source = value as Record<string, unknown>
+    const error = new Error(String(source.message || source.error || '打开文件失败'))
+    Object.assign(error, source)
+    return error
+  }
+  return new Error(value == null ? 'PDF 引擎未能打开文件，请重试。' : String(value))
+}
+
+/** 优先走 SDK 官方 waitForInitialization；事件名 SDK 内为 pdfui-intialization-completed */
+async function waitForPdfuiReady(pdfui: any, UIExtension: any) {
+  const timeout = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('PDFUI 初始化超时')), PDFUI_INIT_TIMEOUT_MS)
+  })
+
+  const init =
+    typeof pdfui.waitForInitialization === 'function'
+      ? pdfui.waitForInitialization()
+      : new Promise<void>((resolve, reject) => {
+          const eventName =
+            UIExtension?.UIEvents?.initializationCompleted || 'pdfui-intialization-completed'
+          try {
+            pdfui.addUIEventListener(eventName, () => resolve())
+          } catch (error) {
+            reject(normalizeOpenError(error))
+          }
+        })
+
+  await Promise.race([init, timeout])
+
+  try {
+    await pdfui.grantQueryLocalFontsPermission?.('granted')
+  } catch {
+    // 非 Electron / 不支持 Local Font Access 时忽略
+  }
 }
 
 /**
@@ -111,9 +82,13 @@ function waitForOpenFileEvent(
 
   return new Promise<void>((resolve, reject) => {
     let settled = false
+    const timer = setTimeout(() => {
+      finish(() => reject(new Error('打开 PDF 超时，请检查文件是否损坏。')))
+    }, 30000)
     const finish = (action: () => void) => {
       if (settled) return
       settled = true
+      clearTimeout(timer)
       try {
         pdfui.removeViewerEventListener?.(successName, onSuccess)
         pdfui.removeViewerEventListener?.(failedName, onFailed)
@@ -125,15 +100,15 @@ function waitForOpenFileEvent(
     const onSuccess = () => finish(() => resolve())
     const onFailed = (err?: unknown) =>
       finish(() => {
-        reject(err instanceof Error ? err : new Error(String(err || '打开文件失败')))
+        reject(normalizeOpenError(err))
       })
 
     pdfui.addViewerEventListener(successName, onSuccess)
     pdfui.addViewerEventListener(failedName, onFailed)
-    // 先挂监听再打开，避免错过同步派发的 success；promise 仅作兜底
+    // 先挂监听再打开；成功以 ViewerEvent 为准，启动阶段异常则立即失败
     Promise.resolve()
       .then(startOpen)
-      .then(onSuccess, onFailed)
+      .catch(onFailed)
   })
 }
 
@@ -236,18 +211,7 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
           renderTo.style.height = '100%'
           host.appendChild(renderTo)
 
-          const libPath = await resolveLibPath()
-          const fontPath = resolveFontPath()
-          const UIExtension = await ensureUIExtension(libPath)
-          const { licenseSN, licenseKey } = await getLicense()
-
-          const readyWorker = window.preloadJrWorker?.({
-            workerPath: `${libPath}/`,
-            enginePath: `${libPath}/jr-engine/gsdk`,
-            fontPath,
-            licenseSN,
-            licenseKey,
-          })
+          const { libPath, UIExtension, readyWorker } = await warmupFoxitSdk()
 
           // 须在 new PDFUI 之前注册自研 Controller
           registerLiteControllers(UIExtension)
@@ -265,11 +229,15 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
           pdfui = new UIExtension.PDFUI({
             viewerOptions: {
               libPath,
+              customs: {
+                // LitePDF 的入口只接收 PDF；绕过 SDK 11.1.0 对 File 的误判与 null rejection
+                isSupportFileType: (input: File) =>
+                  !input?.name ||
+                  input.type === 'application/pdf' ||
+                  /\.pdf$/i.test(input.name),
+              },
               jr: {
                 readyWorker,
-                fontPath,
-                licenseSN,
-                licenseKey,
               },
             },
             renderTo,
@@ -280,17 +248,7 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
           pdfui.__litepdfUIExtension = UIExtension
           pdfui.__litepdfFullscreenCleanup = bindPresentationFullscreenSync(pdfui)
 
-          // 初始化完成后直接授予本机字体权限，不弹框（配合 Electron local-fonts 缺省允许）
-          pdfui.addUIEventListener(
-            UIExtension.UIEvents.initializationCompleted,
-            async () => {
-              try {
-                await pdfui.grantQueryLocalFontsPermission('granted')
-              } catch {
-                // 非 Electron / 不支持 Local Font Access 时忽略
-              }
-            },
-          )
+          await waitForPdfuiReady(pdfui, UIExtension)
 
           // 文件名与导航绑定不阻塞 mount，避免拖住后续 openFile
           void setFilenameLabel(pdfui, '未打开文件')

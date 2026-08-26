@@ -10,6 +10,17 @@
 - 自定义 Layout Template + Fragments 裁剪功能面
 - SDK 适配层隔离：业务组件不直接调用全局 `PDFUI`
 
+## 当前版本
+
+### v0.1.2
+
+- 开始页后台预热 Foxit SDK、License 和 JR Worker，首次打开 PDF 时复用预热结果
+- 使用 SDK 官方 `waitForInitialization()` 判断 PDFUI 就绪，修复安装版初始化超时
+- 改进 PDF 文件类型识别、打开失败提示和超时处理
+- 安装版启动后静默检查更新，并在关于窗口中展示 Release 说明
+- 增加 LitePDF 品牌图标及 Windows/macOS 打包图标配置
+- 更新检查按操作系统和架构选择安装包，避免 macOS 错选 Windows 附件
+
 ## 环境要求
 
 - Node.js 18+
@@ -30,7 +41,7 @@ npm install --ignore-scripts -S @foxitsoftware/foxit-pdf-sdk-for-web-library
 
 `ensure-sdk` 会把 `node_modules/@foxitsoftware/foxit-pdf-sdk-for-web-library/lib` 链接到 `public/foxit-lib`。可用环境变量 `FOXIT_SDK_LIB` 覆盖为本地 lib 目录。
 
-字体：`jr.fontPath` 缺省使用官方 webfonts（与 Vue3 示例一致）；Electron 内再通过 `grantQueryLocalFontsPermission` 读取本机字体，安装包不携带 `foxit-external`。
+字体：预加载 JR Worker 时使用官方 webfonts（与 Vue3 示例一致）；Electron 内再通过 `grantQueryLocalFontsPermission` 读取本机字体，安装包不携带 `foxit-external`。
 
 ## 快速开始
 
@@ -41,6 +52,8 @@ npm run dev
 
 - **桌面窗口（推荐）**：`npm run dev` 会同时拉起 Electron，具备系统文件对话框与真实路径。
 - **浏览器调试**：也可打开 `http://localhost:5173/`。无 Electron API 时会自动注入浏览器替身，支持选择/拖入 PDF；刷新后需重新选择文件。
+- **更新检查**：安装版启动后会静默检查 GitHub Release；仅在发现当前系统与架构可用的安装包时提示，并展示更新内容。
+- **首开预热**：工作台空闲时后台加载 Foxit SDK、License 与 JR Worker，打开首个 PDF 时直接复用。
 
 `predev` / `postinstall` 会：
 
@@ -72,7 +85,18 @@ npm run pack:mac
 - 不打包 `foxit-external`：回退字体用官方 webfonts，文档字体走本机 Local Font Access
 - Electron 语言包同样只保留中英文
 
-代码签名/Apple 公证未强制启用，可按发布需要补充证书环境变量。
+### 代码签名
+
+Windows 安装界面的“发行商”来自 Authenticode 证书主体，不能通过 `productName`、`author` 或任意配置字符串指定。未签名包会显示“未知发布者”。
+
+取得受信任 CA 颁发的 OV/EV 代码签名证书后，在本地或 CI 注入下列变量，electron-builder 会自动签名应用、卸载程序和安装包：
+
+```bash
+WIN_CSC_LINK=/path/to/certificate.pfx
+WIN_CSC_KEY_PASSWORD=certificate-password
+```
+
+证书与密码不得提交到仓库。macOS 分发还需 Developer ID 签名与 Apple 公证。
 
 ## 官方参考
 

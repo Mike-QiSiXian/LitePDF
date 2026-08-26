@@ -3,7 +3,9 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import TabBar from '@/components/TabBar.vue'
 import WelcomePage from '@/components/WelcomePage.vue'
 import PdfTabHost from '@/components/PdfTabHost.vue'
+import UpdatePromptDialog from '@/components/UpdatePromptDialog.vue'
 import { ViewerSessionManager } from '@/foxit/session/ViewerSession'
+import { warmupFoxitSdk } from '@/foxit/warmup'
 import { useRecentStore } from '@/stores/recent'
 import { useTabsStore, WELCOME_TAB_ID } from '@/stores/tabs'
 
@@ -13,6 +15,7 @@ const sessionManager = new ViewerSessionManager()
 const sessionVersion = ref(0)
 const dragging = ref(false)
 const statusMsg = ref('')
+const availableUpdate = ref<UpdateCheckResult | null>(null)
 
 const showWelcome = computed(() => tabs.activeTabId === WELCOME_TAB_ID)
 
@@ -104,19 +107,29 @@ async function onDrop(e: DragEvent) {
 }
 
 let offOpenFiles: (() => void) | undefined
+let offUpdateAvailable: (() => void) | undefined
+
+function onSaveShortcut() {
+  void saveActive()
+}
 
 onMounted(() => {
   recent.refresh()
+  // 开始页展示期间后台预热 SDK / Worker，首开 PDF 更快
+  void warmupFoxitSdk().catch(() => undefined)
   offOpenFiles = window.litepdf.onOpenFiles((paths) => {
     void openPaths(paths)
   })
-  window.addEventListener('litepdf:save', () => {
-    void saveActive()
+  offUpdateAvailable = window.litepdf.onUpdateAvailable((result) => {
+    availableUpdate.value = result
   })
+  window.addEventListener('litepdf:save', onSaveShortcut)
 })
 
 onBeforeUnmount(() => {
   offOpenFiles?.()
+  offUpdateAvailable?.()
+  window.removeEventListener('litepdf:save', onSaveShortcut)
   void sessionManager.closeAll()
 })
 </script>
@@ -150,6 +163,12 @@ onBeforeUnmount(() => {
 
       <div v-if="dragging" class="drop-mask">释放以打开 PDF</div>
     </div>
+
+    <UpdatePromptDialog
+      v-if="availableUpdate"
+      :result="availableUpdate"
+      @close="availableUpdate = null"
+    />
   </div>
 </template>
 

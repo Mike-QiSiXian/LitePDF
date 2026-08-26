@@ -41,6 +41,7 @@ interface LitePdfApi {
   getAppVersion: () => Promise<string>
   checkForUpdates: () => Promise<UpdateCheckResult>
   downloadUpdate: (downloadUrl: string) => Promise<void>
+  onUpdateAvailable: (callback: (result: UpdateCheckResult) => void) => () => void
   onOpenFiles: (callback: (paths: string[]) => void) => () => void
   getFoxitLibUrl: () => Promise<string>
   getFoxitExternalUrl: () => Promise<string>

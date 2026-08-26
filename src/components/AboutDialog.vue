@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import logoUrl from '@/assets/litepdf-icon.png'
 
 const props = defineProps<{
   open: boolean
@@ -85,7 +86,7 @@ onBeforeUnmount(() => {
           ×
         </button>
 
-        <div class="about-logo" aria-hidden="true">PDF</div>
+        <img class="about-logo" :src="logoUrl" alt="" aria-hidden="true" />
         <h2 id="about-title">LitePDF</h2>
         <p class="about-subtitle">轻量、专注的多标签 PDF 阅读器</p>
         <p class="about-version">当前版本 v{{ version }}</p>
@@ -106,6 +107,10 @@ onBeforeUnmount(() => {
           <span v-if="result.status === 'available'" class="install-tip">
             下载完成后，请运行安装包完成升级。
           </span>
+          <div v-if="result.releaseNotes && result.latestVersion" class="release-notes">
+            <strong>v{{ result.latestVersion }} 更新内容</strong>
+            <pre>{{ result.releaseNotes }}</pre>
+          </div>
         </div>
 
         <div class="about-actions">
@@ -183,17 +188,12 @@ onBeforeUnmount(() => {
 }
 
 .about-logo {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 64px;
   height: 64px;
   margin: 0 auto 16px;
   border-radius: 17px;
-  background: linear-gradient(145deg, #4774ff, #244edb);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  object-fit: cover;
   box-shadow: 0 10px 24px rgba(45, 90, 247, 0.28);
 }
 
@@ -255,6 +255,21 @@ h2 {
 
 .install-tip {
   color: #64748b;
+}
+
+.release-notes {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.release-notes pre {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+  color: #475569;
+  font: inherit;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .about-actions {

@@ -74,11 +74,21 @@ function selectReleaseAsset(assets: GitHubReleaseAsset[] = []) {
     return name.endsWith('.appimage') || name.endsWith('.deb') || name.endsWith('.rpm')
   })
 
+  if (process.platform === 'darwin') {
+    return candidates.find((asset) => asset.name.toLowerCase().includes(arch))
+  }
+
   return (
     candidates.find((asset) => asset.name.toLowerCase().includes(arch)) ||
     candidates.find((asset) => /setup|installer/i.test(asset.name)) ||
     candidates[0]
   )
+}
+
+function platformName() {
+  if (process.platform === 'win32') return 'Windows'
+  if (process.platform === 'darwin') return 'macOS'
+  return 'Linux'
 }
 
 async function checkForUpdates(): Promise<UpdateCheckResult> {
@@ -106,6 +116,19 @@ async function checkForUpdates(): Promise<UpdateCheckResult> {
     const asset = selectReleaseAsset(release.assets)
     const hasUpdate = compareVersions(latestVersion, currentVersion) > 0
 
+    if (hasUpdate && !asset) {
+      return {
+        status: 'unavailable',
+        currentVersion,
+        latestVersion,
+        releaseName: release.name || release.tag_name,
+        releaseNotes: release.body || '',
+        publishedAt: release.published_at,
+        releaseUrl: release.html_url,
+        message: `发现新版本 ${latestVersion}，但暂未提供适用于 ${platformName()} ${process.arch} 的安装包。`,
+      }
+    }
+
     return {
       status: hasUpdate ? 'available' : 'up-to-date',
       currentVersion,
@@ -114,7 +137,7 @@ async function checkForUpdates(): Promise<UpdateCheckResult> {
       releaseNotes: release.body || '',
       publishedAt: release.published_at,
       releaseUrl: release.html_url,
-      downloadUrl: asset?.browser_download_url || release.html_url,
+      downloadUrl: hasUpdate ? asset?.browser_download_url : undefined,
       message: hasUpdate ? `发现新版本 ${latestVersion}` : '当前已是最新版本。',
     }
   } catch (error) {
@@ -126,8 +149,25 @@ async function checkForUpdates(): Promise<UpdateCheckResult> {
   }
 }
 
+function scheduleSilentUpdateCheck(win: BrowserWindow) {
+  if (!app.isPackaged) return
+  setTimeout(async () => {
+    if (win.isDestroyed()) return
+    const result = await checkForUpdates()
+    if (result.status === 'available' && result.downloadUrl && !win.isDestroyed()) {
+      win.webContents.send('update:available', result)
+    }
+  }, 4000)
+}
+
 function getPreloadPath() {
   return path.join(__dirname, 'preload.js')
+}
+
+function getWindowIconPath() {
+  return isDev
+    ? path.join(app.getAppPath(), 'resources', 'icon.png')
+    : path.join(process.resourcesPath, 'icon.png')
 }
 
 function getFoxitLibDir() {
@@ -185,6 +225,7 @@ function createWindow() {
     minHeight: 600,
     show: false,
     title: 'LitePDF',
+    icon: getWindowIconPath(),
     // 无边框标题栏：标签栏充当拖拽区；Win/Linux 用 overlay 保留系统按钮
     // 全宽依赖渲染进程 foxit-shell-reset，勿再使用 100vw
     frame: true,
@@ -234,6 +275,7 @@ function createWindow() {
 
   mainWindow.webContents.on('did-finish-load', () => {
     flushPendingOpenFiles()
+    scheduleSilentUpdateCheck(mainWindow!)
   })
 
   mainWindow.on('closed', () => {
