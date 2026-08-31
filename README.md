@@ -2,6 +2,20 @@
 
 基于 **Electron + Vue 3 + Foxit PDF SDK for Web（UIExtension）** 的轻量多标签个人 PDF 阅读器。
 
+[最新版本 v0.1.7](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) · [全部 Release](https://github.com/Mike-QiSiXian/LitePDF/releases)
+
+## 下载安装包
+
+当前最新正式版：**v0.1.7**
+
+| 平台 | 安装包 | 说明 |
+| --- | --- | --- |
+| Windows x64 | [LitePDF-Setup-0.1.7.exe](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.7/LitePDF-Setup-0.1.7.exe) | 推荐；安装后可用右键「使用 LitePDF 打开」 |
+| macOS Apple Silicon | [LitePDF-0.1.6-arm64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.6/LitePDF-0.1.6-arm64.dmg) | 目前最新带 dmg 的版本为 v0.1.6 |
+| macOS Intel | [LitePDF-0.1.6-x64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.6/LitePDF-0.1.6-x64.dmg) | 目前最新带 dmg 的版本为 v0.1.6 |
+
+也可打开 [GitHub Releases](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) 查看完整更新说明与校验哈希。Windows 安装包未做 Authenticode 签名，系统可能提示「未知发布者」。macOS 未签名时，可按住 Control 点击后选择打开，或执行 `xattr -cr /Applications/LitePDF.app`。
+
 ## 功能（V1）
 
 - 常驻工作台：打开 PDF、拖入打开、最近文件（失效/移除/清空）
