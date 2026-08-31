@@ -12,6 +12,11 @@ import {
 import fs from 'node:fs'
 import path from 'node:path'
 import {
+  getPdfAssociationStatus,
+  registerPdfFileAssociation,
+  setAsDefaultPdfHandler,
+} from './file-association'
+import {
   addRecentFile,
   clearRecentFiles,
   getRecentFiles,
@@ -341,6 +346,12 @@ function buildMenu() {
             mainWindow?.webContents.send('menu:save')
           },
         },
+        {
+          label: '设为默认 PDF 阅读器…',
+          click: () => {
+            mainWindow?.webContents.send('menu:set-default-pdf')
+          },
+        },
         { type: 'separator' },
         { role: 'quit', label: '退出' },
       ],
@@ -473,6 +484,9 @@ function registerIpc() {
     if (!filePath) return
     shell.showItemInFolder(filePath)
   })
+  ipcMain.handle('pdfAssoc:status', () => getPdfAssociationStatus())
+  ipcMain.handle('pdfAssoc:register', () => registerPdfFileAssociation())
+  ipcMain.handle('pdfAssoc:setDefault', () => setAsDefaultPdfHandler())
 }
 
 function registerFoxitProtocol() {
@@ -530,6 +544,7 @@ if (!gotLock) {
     if (!isDev) await ensureLocalServer()
     registerFoxitProtocol()
     registerIpc()
+    void registerPdfFileAssociation().catch(() => undefined)
     createWindow()
 
     const launchFiles = process.argv.filter((a) => a.toLowerCase().endsWith('.pdf'))

@@ -27,6 +27,32 @@ const SORT_OPTIONS: { id: SortMode; label: string; chip: string }[] = [
 const sortMode = ref<SortMode>('recent-desc')
 const sortMenuOpen = ref(false)
 const aboutOpen = ref(false)
+const assoc = ref<PdfAssociationStatus | null>(null)
+const assocBusy = ref(false)
+
+async function refreshAssoc() {
+  if (!window.litepdf.getPdfAssociationStatus) return
+  try {
+    assoc.value = await window.litepdf.getPdfAssociationStatus()
+  } catch {
+    assoc.value = null
+  }
+}
+
+async function setDefaultPdf() {
+  if (!window.litepdf.setAsDefaultPdfHandler) return
+  assocBusy.value = true
+  try {
+    const result = await window.litepdf.setAsDefaultPdfHandler()
+    await refreshAssoc()
+    window.dispatchEvent(new CustomEvent('litepdf:pdf-assoc-changed'))
+    window.alert(result.message)
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : '设置默认应用失败')
+  } finally {
+    assocBusy.value = false
+  }
+}
 
 const sortChipLabel = computed(
   () => SORT_OPTIONS.find((o) => o.id === sortMode.value)?.chip ?? '↓ 最近',
@@ -92,10 +118,13 @@ function onDocClick() {
 onMounted(() => {
   recent.refresh()
   document.addEventListener('click', onDocClick)
+  window.addEventListener('litepdf:pdf-assoc-changed', refreshAssoc)
+  void refreshAssoc()
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick)
+  window.removeEventListener('litepdf:pdf-assoc-changed', refreshAssoc)
 })
 
 function toggleSortMenu(e: MouseEvent) {
@@ -292,6 +321,22 @@ function showInFolder(filePath: string) {
       <footer class="welcome-footer">
         <button type="button" class="about-link" @click="aboutOpen = true">
           关于 LitePDF
+        </button>
+        <button
+          v-if="!browserMode"
+          type="button"
+          class="about-link"
+          :disabled="assocBusy || assoc?.isDefault"
+          :title="assoc?.message"
+          @click="setDefaultPdf"
+        >
+          {{
+            assocBusy
+              ? '正在设置…'
+              : assoc?.isDefault
+                ? '已是默认 PDF 应用'
+                : '设为默认 PDF 阅读器'
+          }}
         </button>
       </footer>
     </div>
@@ -829,6 +874,8 @@ button.feat-card:focus-visible {
 .welcome-footer {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: auto;
   padding-top: 40px;
 }
@@ -844,9 +891,14 @@ button.feat-card:focus-visible {
   cursor: pointer;
 }
 
-.about-link:hover {
+.about-link:hover:not(:disabled) {
   background: #f3f4f6;
   color: var(--wq-blue);
+}
+
+.about-link:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 @media (max-width: 1100px) {

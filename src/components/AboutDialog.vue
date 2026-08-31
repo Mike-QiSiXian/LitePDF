@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import logoUrl from '@/assets/litepdf-icon.png'
 
 const props = defineProps<{
@@ -14,12 +14,39 @@ const version = ref('—')
 const checking = ref(false)
 const downloading = ref(false)
 const result = ref<UpdateCheckResult | null>(null)
+const assoc = ref<PdfAssociationStatus | null>(null)
+const assocBusy = ref(false)
+const showAssoc = computed(() => window.litepdf.platform !== 'browser')
 
 async function loadVersion() {
   try {
     version.value = await window.litepdf.getAppVersion()
   } catch {
     version.value = '未知'
+  }
+}
+
+async function refreshAssoc() {
+  if (!window.litepdf.getPdfAssociationStatus) return
+  try {
+    assoc.value = await window.litepdf.getPdfAssociationStatus()
+  } catch {
+    assoc.value = null
+  }
+}
+
+async function setDefaultPdf() {
+  if (!window.litepdf.setAsDefaultPdfHandler) return
+  assocBusy.value = true
+  try {
+    const outcome = await window.litepdf.setAsDefaultPdfHandler()
+    await refreshAssoc()
+    window.dispatchEvent(new CustomEvent('litepdf:pdf-assoc-changed'))
+    window.alert(outcome.message)
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : '设置默认应用失败')
+  } finally {
+    assocBusy.value = false
   }
 }
 
@@ -59,17 +86,21 @@ watch(
     if (open) {
       result.value = null
       void loadVersion()
+      void refreshAssoc()
     }
   },
 )
 
 onMounted(() => {
   document.addEventListener('keydown', onKeydown)
+  window.addEventListener('litepdf:pdf-assoc-changed', refreshAssoc)
   void loadVersion()
+  void refreshAssoc()
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('litepdf:pdf-assoc-changed', refreshAssoc)
 })
 </script>
 
@@ -91,6 +122,25 @@ onBeforeUnmount(() => {
           <h2 id="about-title">LitePDF</h2>
           <p class="about-subtitle">轻量、专注的多标签 PDF 阅读器</p>
           <p class="about-version">当前版本 v{{ version }}</p>
+        </div>
+
+        <div v-if="assoc && showAssoc" class="assoc-box">
+          <strong>{{ assoc.isDefault ? '已是默认 PDF 应用' : '系统 PDF 关联' }}</strong>
+          <span>{{ assoc.message }}</span>
+          <button
+            type="button"
+            class="secondary-btn assoc-btn"
+            :disabled="assocBusy || assoc.isDefault || !assoc.canSetDefault"
+            @click="setDefaultPdf"
+          >
+            {{
+              assocBusy
+                ? '正在设置…'
+                : assoc.isDefault
+                  ? '已设为默认'
+                  : '设为默认 PDF 阅读器'
+            }}
+          </button>
         </div>
 
         <div
@@ -230,6 +280,33 @@ h2 {
   margin: 12px 0 20px;
   color: #8b93a7;
   font-size: 13px;
+}
+
+.assoc-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  margin: -8px 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.assoc-box strong {
+  color: #334155;
+  font-size: 13px;
+}
+
+.assoc-btn {
+  align-self: flex-start;
+  min-width: 0;
+  margin-top: 4px;
 }
 
 .update-result {

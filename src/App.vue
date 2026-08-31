@@ -109,9 +109,21 @@ async function onDrop(e: DragEvent) {
 
 let offOpenFiles: (() => void) | undefined
 let offUpdateAvailable: (() => void) | undefined
+let offSetDefaultPdf: (() => void) | undefined
 
 function onSaveShortcut() {
   void saveActive()
+}
+
+async function setDefaultPdfHandler() {
+  if (!window.litepdf.setAsDefaultPdfHandler) return
+  try {
+    const result = await window.litepdf.setAsDefaultPdfHandler()
+    window.dispatchEvent(new CustomEvent('litepdf:pdf-assoc-changed'))
+    if (result.message) window.alert(result.message)
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : '设置默认应用失败')
+  }
 }
 
 onMounted(() => {
@@ -126,12 +138,16 @@ onMounted(() => {
   offUpdateAvailable = window.litepdf.onUpdateAvailable((result) => {
     availableUpdate.value = result
   })
+  offSetDefaultPdf = window.litepdf.onSetDefaultPdf?.(() => {
+    void setDefaultPdfHandler()
+  })
   window.addEventListener('litepdf:save', onSaveShortcut)
 })
 
 onBeforeUnmount(() => {
   offOpenFiles?.()
   offUpdateAvailable?.()
+  offSetDefaultPdf?.()
   window.removeEventListener('litepdf:save', onSaveShortcut)
   void sessionManager.closeAll()
 })

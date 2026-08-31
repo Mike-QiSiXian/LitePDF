@@ -206,6 +206,30 @@ export function installBrowserLitePdfShim() {
       // 浏览器模式无系统资源管理器
     },
 
+    async getPdfAssociationStatus() {
+      return {
+        packaged: false,
+        registered: false,
+        isDefault: false,
+        canSetDefault: false,
+        platform: 'browser',
+        message: '浏览器调试模式不支持系统文件关联。',
+      }
+    },
+
+    async setAsDefaultPdfHandler() {
+      return {
+        ok: false,
+        isDefault: false,
+        openedSystemSettings: false,
+        message: '浏览器调试模式无法设置默认 PDF 应用。',
+      }
+    },
+
+    onSetDefaultPdf() {
+      return () => undefined
+    },
+
     getPathForFile(file: File) {
       if (!isPdfName(file.name)) return ''
       return rememberFile(file)

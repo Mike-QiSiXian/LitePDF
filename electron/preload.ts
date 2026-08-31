@@ -42,6 +42,15 @@ contextBridge.exposeInMainWorld('litepdf', {
     ipcRenderer.invoke('shell:openPath', filePath) as Promise<string>,
   showItemInFolder: (filePath: string) =>
     ipcRenderer.invoke('shell:showItemInFolder', filePath) as Promise<void>,
+  getPdfAssociationStatus: () =>
+    ipcRenderer.invoke('pdfAssoc:status') as Promise<PdfAssociationStatus>,
+  setAsDefaultPdfHandler: () =>
+    ipcRenderer.invoke('pdfAssoc:setDefault') as Promise<SetDefaultPdfResult>,
+  onSetDefaultPdf: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('menu:set-default-pdf', handler)
+    return () => ipcRenderer.removeListener('menu:set-default-pdf', handler)
+  },
   getPathForFile: (file: File) => {
     try {
       return webUtils.getPathForFile(file)

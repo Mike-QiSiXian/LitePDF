@@ -40,6 +40,13 @@ extraResources:
   - from: resources/icon.png
     to: icon.png
 asar: true
+fileAssociations:
+  - ext: pdf
+    name: PDF Document
+    description: PDF 文档
+    mimeType: application/pdf
+    role: Viewer
+    rank: Owner
 win:
   icon: resources/icon.png
   target:
@@ -53,6 +60,7 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: LitePDF
+  include: build/installer.nsh
 mac:
   icon: resources/icon.icns
   target:

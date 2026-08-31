@@ -17,6 +17,22 @@ interface RecentFileItem {
   sizeBytes?: number
 }
 
+interface PdfAssociationStatus {
+  packaged: boolean
+  registered: boolean
+  isDefault: boolean
+  canSetDefault: boolean
+  platform: string
+  message: string
+}
+
+interface SetDefaultPdfResult {
+  ok: boolean
+  isDefault: boolean
+  openedSystemSettings: boolean
+  message: string
+}
+
 interface UpdateCheckResult {
   status: 'available' | 'up-to-date' | 'unavailable' | 'error'
   currentVersion: string
@@ -48,6 +64,9 @@ interface LitePdfApi {
   getFoxitExternalUrl: () => Promise<string>
   openPath?: (filePath: string) => Promise<string>
   showItemInFolder?: (filePath: string) => Promise<void>
+  getPdfAssociationStatus?: () => Promise<PdfAssociationStatus>
+  setAsDefaultPdfHandler?: () => Promise<SetDefaultPdfResult>
+  onSetDefaultPdf?: (callback: () => void) => () => void
   getPathForFile: (file: File) => string
   platform: NodeJS.Platform | 'browser'
 }
