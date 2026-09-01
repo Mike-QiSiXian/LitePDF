@@ -1,7 +1,6 @@
 import { app, shell } from 'electron'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import os from 'node:os'
 
 const execFileAsync = promisify(execFile)
 
@@ -34,11 +33,6 @@ function openCommand() {
   return `"${exePath()}" "%1"`
 }
 
-function isWindows11() {
-  const parts = os.release().split('.').map((n) => Number(n) || 0)
-  return process.platform === 'win32' && parts[0] === 10 && (parts[2] || 0) >= 22000
-}
-
 async function runPowerShell(script: string) {
   await execFileAsync(
     'powershell.exe',
@@ -61,26 +55,24 @@ function psQuote(value: string) {
 }
 
 async function winSetReg(psPath: string, name: string, value: string) {
-  const valueName = name === '(default)' ? '' : name
+  const valueName = name === '(default)' ? '(default)' : name
   const script = `
     $p = ${psQuote(psPath)}
     if (-not (Test-Path -LiteralPath $p)) { New-Item -Path $p -Force | Out-Null }
-    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(($p -replace '^HKCU:\\',''), $true)
-    if (-not $key) { throw "无法打开注册表: $p" }
-    $key.SetValue(${psQuote(valueName)}, ${psQuote(value)}, [Microsoft.Win32.RegistryValueKind]::String)
-    $key.Close()
+    Set-ItemProperty -LiteralPath $p -Name ${psQuote(valueName)} -Value ${psQuote(value)} -Force
   `
   await runPowerShell(script)
 }
 
 async function winGetReg(psPath: string, name: string) {
-  const valueName = name === '(default)' ? '' : name
+  const valueName = name === '(default)' ? '(default)' : name
+  const readExpr = valueName === '(default)' ? "$props.'(default)'" : `$props.${valueName}`
   const script = `
     $p = ${psQuote(psPath)}
     if (-not (Test-Path -LiteralPath $p)) { '' ; exit }
     try {
-      $item = Get-Item -LiteralPath $p -ErrorAction Stop
-      $v = $item.GetValue(${psQuote(valueName)})
+      $props = Get-ItemProperty -LiteralPath $p -ErrorAction Stop
+      $v = ${readExpr}
       if ($null -eq $v) { '' } else { [string]$v }
     } catch { '' }
   `
@@ -89,6 +81,50 @@ async function winGetReg(psPath: string, name: string) {
   } catch {
     return ''
   }
+}
+
+function normalizeFsPath(value: string) {
+  return value.replace(/\//g, '\\').toLowerCase()
+}
+
+function commandPointsToLitePdf(command: string) {
+  const text = normalizeFsPath(command)
+  if (!text) return false
+  if (text.includes('litepdf.exe')) return true
+  const self = normalizeFsPath(exePath())
+  return !!self && text.includes(self)
+}
+
+async function resolveProgIdOpenCommand(progId: string) {
+  const id = String(progId || '').trim()
+  if (!id) return ''
+  const paths = [
+    `HKCU:\\Software\\Classes\\${id}\\shell\\open\\command`,
+    `HKLM:\\Software\\Classes\\${id}\\shell\\open\\command`,
+  ]
+  for (const path of paths) {
+    const cmd = await winGetReg(path, '(default)')
+    if (cmd) return cmd
+  }
+  return ''
+}
+
+async function isLitePdfProgId(progId: string) {
+  const value = String(progId || '').trim()
+  if (!value) return false
+  const lower = value.toLowerCase()
+  if (
+    value === PDF_PROG_ID ||
+    lower === 'applications\\litepdf.exe' ||
+    lower === 'litepdf.pdf' ||
+    lower.includes('litepdf')
+  ) {
+    return true
+  }
+  // electron-builder 的 fileAssociations.name 为 "PDF Document"，
+  // Windows 设置默认应用时可能写入该 ProgId，需解析其打开命令是否指向本程序。
+  const command = await resolveProgIdOpenCommand(value)
+  return commandPointsToLitePdf(command)
 }
 
 async function notifyShellAssocChanged() {
@@ -122,6 +158,8 @@ export async function registerPdfFileAssociation(): Promise<void> {
 async function registerWindowsAssociation() {
   const exe = exePath()
   const cmd = openCommand()
+  // electron-builder fileAssociations.name = "PDF Document"，系统设置默认应用常写入该 ProgId
+  const builderProgId = 'PDF Document'
 
   await Promise.all([
     winSetReg(`HKCU:\\Software\\Classes\\${PDF_PROG_ID}`, '(default)', 'PDF 文档'),
@@ -129,7 +167,13 @@ async function registerWindowsAssociation() {
     winSetReg(`HKCU:\\Software\\Classes\\${PDF_PROG_ID}\\DefaultIcon`, '(default)', `${exe},0`),
     winSetReg(`HKCU:\\Software\\Classes\\${PDF_PROG_ID}\\shell\\open`, '(default)', '打开'),
     winSetReg(`HKCU:\\Software\\Classes\\${PDF_PROG_ID}\\shell\\open\\command`, '(default)', cmd),
+    winSetReg(`HKCU:\\Software\\Classes\\${builderProgId}`, '(default)', 'PDF 文档'),
+    winSetReg(`HKCU:\\Software\\Classes\\${builderProgId}`, 'FriendlyTypeName', 'PDF 文档'),
+    winSetReg(`HKCU:\\Software\\Classes\\${builderProgId}\\DefaultIcon`, '(default)', `${exe},0`),
+    winSetReg(`HKCU:\\Software\\Classes\\${builderProgId}\\shell\\open`, '(default)', '打开'),
+    winSetReg(`HKCU:\\Software\\Classes\\${builderProgId}\\shell\\open\\command`, '(default)', cmd),
     winSetReg('HKCU:\\Software\\Classes\\.pdf\\OpenWithProgids', PDF_PROG_ID, ''),
+    winSetReg('HKCU:\\Software\\Classes\\.pdf\\OpenWithProgids', builderProgId, ''),
     winSetReg('HKCU:\\Software\\Classes\\.pdf\\shell\\LitePDF', '(default)', CONTEXT_MENU_LABEL),
     winSetReg('HKCU:\\Software\\Classes\\.pdf\\shell\\LitePDF', 'MUIVerb', CONTEXT_MENU_LABEL),
     winSetReg('HKCU:\\Software\\Classes\\.pdf\\shell\\LitePDF', 'Icon', `${exe},0`),
@@ -171,20 +215,23 @@ async function registerWindowsAssociation() {
 }
 
 async function isWindowsDefaultHandler() {
-  const progId = await winGetReg(
-    'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.pdf\\UserChoice',
-    'ProgId',
-  )
-  if (!progId) {
-    const fallback = await winGetReg('HKCU:\\Software\\Classes\\.pdf', '(default)')
-    return fallback === PDF_PROG_ID
+  // Windows 11 优先 UserChoiceLatest；旧路径 UserChoice 可能仍是历史值（如 MSEdgePDF）
+  const candidates = [
+    await winGetReg(
+      'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.pdf\\UserChoiceLatest\\ProgId',
+      'ProgId',
+    ),
+    await winGetReg(
+      'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.pdf\\UserChoice',
+      'ProgId',
+    ),
+    await winGetReg('HKCU:\\Software\\Classes\\.pdf', '(default)'),
+  ]
+
+  for (const raw of candidates) {
+    if (await isLitePdfProgId(raw)) return true
   }
-  const normalized = progId.trim()
-  return (
-    normalized === PDF_PROG_ID ||
-    normalized.toLowerCase() === 'applications\\litepdf.exe' ||
-    /litepdf/i.test(normalized)
-  )
+  return false
 }
 
 async function isWindowsRegistered() {
@@ -253,7 +300,7 @@ export async function getPdfAssociationStatus(): Promise<PdfAssociationStatus> {
       packaged,
       registered,
       isDefault,
-      canSetDefault: true,
+      canSetDefault: !isDefault,
       platform,
       message,
     }
@@ -266,7 +313,7 @@ export async function getPdfAssociationStatus(): Promise<PdfAssociationStatus> {
       packaged,
       registered: true,
       isDefault,
-      canSetDefault: true,
+      canSetDefault: !isDefault,
       platform,
       message: isDefault
         ? 'LitePDF 已是本机 PDF 的默认应用。'
@@ -285,9 +332,13 @@ export async function getPdfAssociationStatus(): Promise<PdfAssociationStatus> {
 }
 
 async function openWindowsDefaultAppsSettings() {
-  const uris = isWindows11()
-    ? ['ms-settings:defaultapps?registeredAppUser=LitePDF', 'ms-settings:defaultapps']
-    : ['ms-settings:defaultapps', 'ms-settings:default-programs']
+  // Windows 不允许程序静默抢占默认应用；尽量打开「按文件类型选择默认应用」页面
+  const uris = [
+    'ms-settings:defaultapps?fileExtension=.pdf',
+    'ms-settings:defaultapps?registeredAppUser=LitePDF',
+    'ms-settings:defaultapps',
+    'ms-settings:default-programs',
+  ]
   for (const uri of uris) {
     try {
       await shell.openExternal(uri)
@@ -360,8 +411,8 @@ export async function setAsDefaultPdfHandler(): Promise<SetDefaultPdfResult> {
       isDefault: false,
       openedSystemSettings,
       message: openedSystemSettings
-        ? '已注册右键菜单。Windows 需由你在系统设置中确认默认应用：找到 LitePDF，将 .pdf 设为默认。'
-        : '已注册右键「使用 LitePDF 打开」。请打开「设置 → 应用 → 默认应用」，将 PDF 指定为 LitePDF。',
+        ? '已打开系统设置。请在「默认应用」中搜索 PDF 或 LitePDF，将 .pdf 明确指定为 LitePDF。完成后回到本应用，按钮会自动变为「已是默认」。'
+        : '已注册右键「使用 LitePDF 打开」。请打开「设置 → 应用 → 默认应用」，将 PDF 指定为 LitePDF。完成后回到本应用再查看按钮状态。',
     }
   }
 

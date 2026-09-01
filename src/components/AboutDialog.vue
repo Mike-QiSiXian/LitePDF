@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import logoUrl from '@/assets/litepdf-icon.png'
+import { showAppAlert } from '@/composables/useAppAlert'
 
 const props = defineProps<{
   open: boolean
@@ -17,6 +18,15 @@ const result = ref<UpdateCheckResult | null>(null)
 const assoc = ref<PdfAssociationStatus | null>(null)
 const assocBusy = ref(false)
 const showAssoc = computed(() => window.litepdf.platform !== 'browser')
+let offPdfAssocChanged: (() => void) | undefined
+let assocPollTimer: number | undefined
+
+function stopAssocPolling() {
+  if (assocPollTimer != null) {
+    window.clearInterval(assocPollTimer)
+    assocPollTimer = undefined
+  }
+}
 
 async function loadVersion() {
   try {
@@ -30,21 +40,54 @@ async function refreshAssoc() {
   if (!window.litepdf.getPdfAssociationStatus) return
   try {
     assoc.value = await window.litepdf.getPdfAssociationStatus()
+    if (assoc.value.isDefault) stopAssocPolling()
   } catch {
     assoc.value = null
   }
 }
 
+function startAssocPolling() {
+  stopAssocPolling()
+  let tries = 0
+  assocPollTimer = window.setInterval(() => {
+    tries += 1
+    void refreshAssoc()
+    if (tries >= 20) stopAssocPolling()
+  }, 1500)
+}
+
 async function setDefaultPdf() {
   if (!window.litepdf.setAsDefaultPdfHandler) return
+  if (assoc.value?.isDefault || !assoc.value?.canSetDefault) return
   assocBusy.value = true
   try {
     const outcome = await window.litepdf.setAsDefaultPdfHandler()
-    await refreshAssoc()
+    if (outcome.isDefault) {
+      assoc.value = {
+        packaged: true,
+        registered: true,
+        isDefault: true,
+        canSetDefault: false,
+        platform: window.litepdf.platform,
+        message: outcome.message,
+      }
+      stopAssocPolling()
+    } else {
+      await refreshAssoc()
+      startAssocPolling()
+    }
     window.dispatchEvent(new CustomEvent('litepdf:pdf-assoc-changed'))
-    window.alert(outcome.message)
+    showAppAlert({
+      title: outcome.isDefault ? '已设为默认应用' : '请在系统设置中确认',
+      message: outcome.message,
+      tone: outcome.isDefault || outcome.ok ? 'info' : 'error',
+    })
   } catch (error) {
-    window.alert(error instanceof Error ? error.message : '设置默认应用失败')
+    showAppAlert({
+      title: '设置失败',
+      message: error instanceof Error ? error.message : '设置默认应用失败',
+      tone: 'error',
+    })
   } finally {
     assocBusy.value = false
   }
@@ -94,6 +137,9 @@ watch(
 onMounted(() => {
   document.addEventListener('keydown', onKeydown)
   window.addEventListener('litepdf:pdf-assoc-changed', refreshAssoc)
+  offPdfAssocChanged = window.litepdf.onPdfAssociationChanged?.(() => {
+    void refreshAssoc()
+  })
   void loadVersion()
   void refreshAssoc()
 })
@@ -101,6 +147,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
   window.removeEventListener('litepdf:pdf-assoc-changed', refreshAssoc)
+  offPdfAssocChanged?.()
+  stopAssocPolling()
 })
 </script>
 

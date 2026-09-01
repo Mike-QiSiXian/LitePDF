@@ -67,6 +67,7 @@ interface LitePdfApi {
   getPdfAssociationStatus?: () => Promise<PdfAssociationStatus>
   setAsDefaultPdfHandler?: () => Promise<SetDefaultPdfResult>
   onSetDefaultPdf?: (callback: () => void) => () => void
+  onPdfAssociationChanged?: (callback: () => void) => () => void
   getPathForFile: (file: File) => string
   platform: NodeJS.Platform | 'browser'
 }

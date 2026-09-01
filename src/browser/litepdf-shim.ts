@@ -230,6 +230,10 @@ export function installBrowserLitePdfShim() {
       return () => undefined
     },
 
+    onPdfAssociationChanged() {
+      return () => undefined
+    },
+
     getPathForFile(file: File) {
       if (!isPdfName(file.name)) return ''
       return rememberFile(file)

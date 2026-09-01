@@ -4,6 +4,8 @@ import TabBar from '@/components/TabBar.vue'
 import WelcomePage from '@/components/WelcomePage.vue'
 import PdfTabHost from '@/components/PdfTabHost.vue'
 import UpdatePromptDialog from '@/components/UpdatePromptDialog.vue'
+import AppAlertDialog from '@/components/AppAlertDialog.vue'
+import { closeAppAlert, showAppAlert, useAppAlertState } from '@/composables/useAppAlert'
 import { toUserFacingErrorMessage } from '@/foxit/errors'
 import { ViewerSessionManager } from '@/foxit/session/ViewerSession'
 import { prewarmJrWorkerInBackground, warmupFoxitSdk } from '@/foxit/warmup'
@@ -12,6 +14,7 @@ import { useTabsStore, WELCOME_TAB_ID } from '@/stores/tabs'
 
 const tabs = useTabsStore()
 const recent = useRecentStore()
+const appAlert = useAppAlertState()
 const sessionManager = new ViewerSessionManager()
 const sessionVersion = ref(0)
 const dragging = ref(false)
@@ -120,9 +123,19 @@ async function setDefaultPdfHandler() {
   try {
     const result = await window.litepdf.setAsDefaultPdfHandler()
     window.dispatchEvent(new CustomEvent('litepdf:pdf-assoc-changed'))
-    if (result.message) window.alert(result.message)
+    if (result.message) {
+      showAppAlert({
+        title: result.isDefault ? '已设为默认应用' : '请在系统设置中确认',
+        message: result.message,
+        tone: result.isDefault || result.ok ? 'info' : 'error',
+      })
+    }
   } catch (error) {
-    window.alert(error instanceof Error ? error.message : '设置默认应用失败')
+    showAppAlert({
+      title: '设置失败',
+      message: error instanceof Error ? error.message : '设置默认应用失败',
+      tone: 'error',
+    })
   }
 }
 
@@ -187,6 +200,15 @@ onBeforeUnmount(() => {
       v-if="availableUpdate"
       :result="availableUpdate"
       @close="availableUpdate = null"
+    />
+
+    <AppAlertDialog
+      :open="appAlert.open"
+      :title="appAlert.title"
+      :message="appAlert.message"
+      :tone="appAlert.tone"
+      :confirm-text="appAlert.confirmText"
+      @close="closeAppAlert"
     />
   </div>
 </template>

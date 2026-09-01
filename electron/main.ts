@@ -319,6 +319,12 @@ function createWindow() {
     scheduleSilentUpdateCheck(mainWindow!)
   })
 
+  // 从系统「默认应用」设置返回后，刷新 PDF 关联状态，避免按钮仍可重复点击
+  mainWindow.on('focus', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    mainWindow.webContents.send('pdfAssoc:changed')
+  })
+
   mainWindow.on('closed', () => {
     mainWindow = null
   })

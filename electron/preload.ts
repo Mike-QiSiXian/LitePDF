@@ -51,6 +51,11 @@ contextBridge.exposeInMainWorld('litepdf', {
     ipcRenderer.on('menu:set-default-pdf', handler)
     return () => ipcRenderer.removeListener('menu:set-default-pdf', handler)
   },
+  onPdfAssociationChanged: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('pdfAssoc:changed', handler)
+    return () => ipcRenderer.removeListener('pdfAssoc:changed', handler)
+  },
   getPathForFile: (file: File) => {
     try {
       return webUtils.getPathForFile(file)
