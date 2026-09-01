@@ -11,8 +11,8 @@
 | 平台 | 安装包 | 说明 |
 | --- | --- | --- |
 | Windows x64 | [LitePDF-Setup-0.1.10.exe](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.10/LitePDF-Setup-0.1.10.exe) | 推荐；安装后可用右键「使用 LitePDF 打开」 |
-| macOS Apple Silicon | [LitePDF-0.1.9-arm64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.9/LitePDF-0.1.9-arm64.dmg) | Apple 芯片（v0.1.10 macOS 包待另行构建上传） |
-| macOS Intel | [LitePDF-0.1.9-x64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.9/LitePDF-0.1.9-x64.dmg) | Intel（v0.1.10 macOS 包待另行构建上传） |
+| macOS Apple Silicon | [LitePDF-0.1.10-arm64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.10/LitePDF-0.1.10-arm64.dmg) | Apple 芯片 |
+| macOS Intel | [LitePDF-0.1.10-x64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.10/LitePDF-0.1.10-x64.dmg) | Intel |
 
 也可打开 [GitHub Releases](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) 查看完整更新说明与校验哈希。Windows 安装包未做 Authenticode 签名，系统可能提示「未知发布者」。macOS 未签名时，可按住 Control 点击后选择打开，或执行 `xattr -cr /Applications/LitePDF.app`。
 
