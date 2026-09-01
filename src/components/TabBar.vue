@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from '@/i18n'
 import { WELCOME_TAB_ID, type DocTab } from '@/stores/tabs'
 
 defineProps<{
@@ -10,6 +11,8 @@ const emit = defineEmits<{
   activate: [id: string]
   close: [id: string]
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -19,8 +22,8 @@ const emit = defineEmits<{
       class="lp-tab lp-tab-home"
       :class="{ active: activeTabId === WELCOME_TAB_ID }"
       role="tab"
-      title="开始页"
-      aria-label="开始页"
+      :title="t('tabs.home')"
+      :aria-label="t('tabs.home')"
       @click="emit('activate', WELCOME_TAB_ID)"
     >
       <svg
@@ -52,7 +55,7 @@ const emit = defineEmits<{
         <span class="lp-tab-title">{{ doc.dirty ? `${doc.title} *` : doc.title }}</span>
         <span
           class="lp-tab-close"
-          title="关闭"
+          :title="t('tabs.close')"
           @click.stop="emit('close', doc.id)"
         >×</span>
       </button>

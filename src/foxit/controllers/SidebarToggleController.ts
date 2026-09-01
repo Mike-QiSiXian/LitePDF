@@ -14,7 +14,7 @@ const PANEL = {
   thumbnail: 'sidebar-thumbnail-panel',
 } as const
 
-const TOOLTIP = '缩略图/书签/注释列表'
+const TOOLTIP = 'litepdf:sidebar.navigation'
 
 export function defineSidebarToggleController(UIExtension: any) {
   return {

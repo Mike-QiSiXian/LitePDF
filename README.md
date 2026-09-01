@@ -2,15 +2,15 @@
 
 基于 **Electron + Vue 3 + Foxit PDF SDK for Web（UIExtension）** 的轻量多标签个人 PDF 阅读器。
 
-[最新版本 v0.1.8](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) · [全部 Release](https://github.com/Mike-QiSiXian/LitePDF/releases)
+[最新版本 v0.1.9](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) · [全部 Release](https://github.com/Mike-QiSiXian/LitePDF/releases)
 
 ## 下载安装包
 
-当前最新正式版：**v0.1.8**
+当前最新正式版：**v0.1.9**
 
 | 平台 | 安装包 | 说明 |
 | --- | --- | --- |
-| Windows x64 | [LitePDF-Setup-0.1.8.exe](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.8/LitePDF-Setup-0.1.8.exe) | 推荐；安装后可用右键「使用 LitePDF 打开」 |
+| Windows x64 | [LitePDF-Setup-0.1.9.exe](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.9/LitePDF-Setup-0.1.9.exe) | 推荐；安装后可用右键「使用 LitePDF 打开」 |
 | macOS Apple Silicon | [LitePDF-0.1.6-arm64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.6/LitePDF-0.1.6-arm64.dmg) | 目前最新带 dmg 的版本为 v0.1.6 |
 | macOS Intel | [LitePDF-0.1.6-x64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.6/LitePDF-0.1.6-x64.dmg) | 目前最新带 dmg 的版本为 v0.1.6 |
 
@@ -26,6 +26,13 @@
 - SDK 适配层隔离：业务组件不直接调用全局 `PDFUI`
 
 ## 当前版本
+
+### v0.1.9
+
+- **中英文界面切换**：关于窗口提供简体中文 / English；欢迎页、标签栏、菜单与阅读器工具栏跟随切换
+- **文件名不被翻译**：已打开 PDF 时顶栏显示真实文件名，切语言后不再变成「未打开文件」
+- **开发态可检测默认 PDF 应用**：`npm run dev` 会读取本机是否已将安装版 LitePDF 设为默认；未默认时可打开系统设置
+- Windows 开发控制台切换 UTF-8，减少中文日志乱码
 
 ### v0.1.8
 
@@ -146,7 +153,7 @@ npm run pack:mac
 - Windows：资源管理器右键出现「使用 LitePDF 打开」；应用会出现在「设置 → 应用 → 默认应用」中。Windows 10/11 不允许程序静默抢占默认应用，需在系统设置中确认将 `.pdf` 指定给 LitePDF。开始页和关于窗口提供「设为默认 PDF 阅读器」入口。
 - macOS：出现在访达「打开方式」中；应用内按钮会尝试将 LitePDF 设为默认。若系统拒绝，可在「显示简介 → 打开方式 → 全部更改」中指定。
 
-开发模式（`npm run dev`）不会写入系统关联。
+开发模式（`npm run dev`）不会把开发态 Electron 注册为系统关联，但仍会检测本机是否已将安装版 LitePDF 设为默认，并可打开系统默认应用设置。
 
 ### 代码签名
 

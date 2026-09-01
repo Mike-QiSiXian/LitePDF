@@ -2,6 +2,8 @@
  * 顶栏「更多」下拉菜单项 Controller
  */
 
+import { t } from '@/i18n'
+
 function notify(message: string) {
   try {
     window.alert(message)
@@ -39,13 +41,13 @@ async function startPresentation(pdfui: any, fullscreenTrigger: any) {
 async function openDocumentProperties(ctx: any) {
   const pdfui = ctx.getPDFUI?.()
   if (!pdfui?.__litepdfFilePath) {
-    notify('请先打开 PDF 文件')
+    notify(t('reader.openFirst'))
     return
   }
 
   const doc = await pdfui.getCurrentPDFDoc()
   if (!doc) {
-    notify('无法打开文档属性')
+    notify(t('reader.cannotOpenProperties'))
     return
   }
   await doc.getMetadata()
@@ -55,7 +57,7 @@ async function openDocumentProperties(ctx: any) {
     popup = await Promise.resolve(pdfui.openDialog('file-property-popup'))
   }
   if (!popup?.show) {
-    notify('无法打开文档属性')
+    notify(t('reader.cannotOpenProperties'))
     return
   }
   popup.show()
@@ -95,15 +97,15 @@ export function defineMoreMenuController() {
             // 浏览器调试：用 file URL 尝试打开
             window.open(`file:///${filePath.replace(/\\/g, '/')}`, '_blank')
           } else {
-            notify('请先打开 PDF 文件')
+            notify(t('reader.openFirst'))
           }
           break
         }
         case 'send-devices':
-          notify('「发送到其他设备」即将支持')
+          notify(t('reader.sendDevicesSoon'))
           break
         case 'password':
-          notify('「文档密码」即将支持')
+          notify(t('reader.passwordSoon'))
           break
         case 'annotations': {
           try {
@@ -115,7 +117,7 @@ export function defineMoreMenuController() {
             const panel = await getComp(this, 'comment-list-sidebar-panel')
             await panel?.active?.()
           } catch {
-            notify('无法打开注解面板')
+            notify(t('reader.cannotOpenAnnotations'))
           }
           break
         }
@@ -123,14 +125,14 @@ export function defineMoreMenuController() {
           try {
             await openDocumentProperties(this)
           } catch {
-            notify('无法打开文档属性')
+            notify(t('reader.cannotOpenProperties'))
           }
           break
         }
         case 'play': {
           const pdfui = this.getPDFUI?.()
           if (!pdfui?.__litepdfFilePath) {
-            notify('请先打开 PDF 文件')
+            notify(t('reader.openFirst'))
             break
           }
           try {
@@ -139,7 +141,7 @@ export function defineMoreMenuController() {
               (await getComp(this, 'litepdf-presentation-fullscreen-trigger'))
             await startPresentation(pdfui, fullscreenTrigger)
           } catch {
-            notify('无法进入播放模式')
+            notify(t('reader.cannotEnterPresentation'))
           }
           break
         }

@@ -9,6 +9,13 @@ import {
 } from '../controllers/ViewHistory'
 import { bindUndoRedoButtons } from '../controllers/UndoRedoBinder'
 import { isRawEngineErrorCode, toUserFacingErrorMessage } from '../errors'
+import {
+  getPreferredUiLanguage,
+  localizeLitePdfUi,
+  registerLitePdfI18n,
+  setLitePdfFilenameLabel,
+  unregisterLitePdfI18n,
+} from '../i18n'
 import { takeReadyWorkerForInstance, warmupFoxitSdk } from '../warmup'
 import '../styles/viewer-chrome.css'
 import type { AdapterCallbacks, FoxitViewerAdapter } from './types'
@@ -211,20 +218,9 @@ function bindPresentationFullscreenSync(pdfui: any) {
   }
 }
 
-async function setFilenameLabel(pdfui: any, name: string) {
-  try {
-    const comp = await getComponentByNameSafe(pdfui, 'litepdf-filename', 500)
-    const el =
-      comp?.getElement?.() ||
-      comp?.element ||
-      document.querySelector('.litepdf-pdfui [name="litepdf-filename"]')
-    if (el) {
-      el.textContent = name
-      el.setAttribute('title', name)
-    }
-  } catch {
-    // ignore
-  }
+async function setFilenameLabel(pdfui: any, name: string | null) {
+  // 统一走 i18n 层：记住真实文件名，避免切语言时被占位词条覆盖
+  await setLitePdfFilenameLabel(pdfui, name)
 }
 
 export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): FoxitViewerAdapter {
@@ -266,6 +262,9 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
           ]
 
           pdfui = new UIExtension.PDFUI({
+            i18n: {
+              lng: await getPreferredUiLanguage(),
+            },
             viewerOptions: {
               libPath,
               jr: {
@@ -277,13 +276,15 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
             fragments: [],
             addons,
           })
+          registerLitePdfI18n(pdfui)
           pdfui.__litepdfUIExtension = UIExtension
           pdfui.__litepdfFullscreenCleanup = bindPresentationFullscreenSync(pdfui)
 
           await waitForPdfuiReady(pdfui, UIExtension)
+          await localizeLitePdfUi(pdfui)
+          // 不挂 data-i18n；空文档时手动写占位，打开后再写真实文件名
+          await setFilenameLabel(pdfui, null)
 
-          // 文件名与导航绑定不阻塞 mount，避免拖住后续 openFile
-          void setFilenameLabel(pdfui, '未打开文件')
           void bindToolbarTabs(pdfui)
           void bindViewNavButtons(pdfui, UIExtension)
           void bindUndoRedoButtons(pdfui)
@@ -293,6 +294,7 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
         await mountPromise
       } catch (e) {
         mountPromise = null
+        if (pdfui) unregisterLitePdfI18n(pdfui)
         pdfui = null
         throw e
       }
@@ -391,6 +393,7 @@ export function createFoxitViewerAdapter(callbacks: AdapterCallbacks = {}): Foxi
       destroyed = true
       try {
         if (pdfui) {
+          unregisterLitePdfI18n(pdfui)
           pdfui.__litepdfFullscreenCleanup?.()
           await pdfui.close?.()
           pdfui.destroy?.()

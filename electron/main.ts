@@ -9,8 +9,29 @@ import {
   session,
   shell,
 } from 'electron'
+import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+
+/** 开发态：控制台切 UTF-8，避免 Chromium/Node 中文日志在 GBK 控制台乱码 */
+function ensureDevUtf8Console() {
+  if (process.platform !== 'win32' || app.isPackaged) return
+  try {
+    execSync('chcp 65001 >NUL', {
+      stdio: 'ignore',
+      windowsHide: true,
+      shell: true,
+    })
+  } catch {
+    // ignore
+  }
+}
+
+ensureDevUtf8Console()
+// 开发态降低 Chromium 原生 ERROR 刷屏（如 registration_protocol_win 本地化文案乱码）
+if (!app.isPackaged) {
+  app.commandLine.appendSwitch('log-level', '3')
+}
 import {
   getPdfAssociationStatus,
   registerPdfFileAssociation,
@@ -22,6 +43,12 @@ import {
   getRecentFiles,
   removeRecentFile,
 } from './ipc/recent-files'
+import { getUiLanguage, setUiLanguage, type UiLanguage } from './ipc/ui-settings'
+import {
+  mt,
+  resolveStartupLanguage,
+  setCurrentMenuLanguage,
+} from './i18n-menu'
 import { startLocalStaticServer, type LocalStaticServer } from './local-static-server'
 
 const isDev = !app.isPackaged
@@ -335,10 +362,10 @@ function createWindow() {
 function buildMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
-      label: '文件',
+      label: mt('file'),
       submenu: [
         {
-          label: '打开…',
+          label: mt('open'),
           accelerator: 'CmdOrCtrl+O',
           click: async () => {
             const files = await openPdfDialog()
@@ -346,33 +373,33 @@ function buildMenu() {
           },
         },
         {
-          label: '保存…',
+          label: mt('save'),
           accelerator: 'CmdOrCtrl+S',
           click: () => {
             mainWindow?.webContents.send('menu:save')
           },
         },
         {
-          label: '设为默认 PDF 阅读器…',
+          label: mt('setDefaultPdf'),
           click: () => {
             mainWindow?.webContents.send('menu:set-default-pdf')
           },
         },
         { type: 'separator' },
-        { role: 'quit', label: '退出' },
+        { role: 'quit', label: mt('quit') },
       ],
     },
     {
-      label: '视图',
+      label: mt('view'),
       submenu: [
-        { role: 'reload', label: '重新加载' },
-        { role: 'toggleDevTools', label: '开发者工具' },
+        { role: 'reload', label: mt('reload') },
+        { role: 'toggleDevTools', label: mt('toggleDevTools') },
         { type: 'separator' },
-        { role: 'resetZoom', label: '实际大小' },
-        { role: 'zoomIn', label: '放大' },
-        { role: 'zoomOut', label: '缩小' },
+        { role: 'resetZoom', label: mt('resetZoom') },
+        { role: 'zoomIn', label: mt('zoomIn') },
+        { role: 'zoomOut', label: mt('zoomOut') },
         { type: 'separator' },
-        { role: 'togglefullscreen', label: '全屏' },
+        { role: 'togglefullscreen', label: mt('toggleFullscreen') },
       ],
     },
   ]
@@ -418,7 +445,7 @@ function bindWindowShortcuts() {
 async function openPdfDialog(): Promise<string[]> {
   if (!mainWindow) return []
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: '打开 PDF',
+    title: mt('openPdfTitle'),
     properties: ['openFile', 'multiSelections'],
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   })
@@ -428,7 +455,7 @@ async function openPdfDialog(): Promise<string[]> {
 async function savePdfDialog(defaultName = 'document.pdf'): Promise<string | null> {
   if (!mainWindow) return null
   const result = await dialog.showSaveDialog(mainWindow, {
-    title: '另存为',
+    title: mt('saveAsTitle'),
     defaultPath: defaultName,
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   })
@@ -465,6 +492,14 @@ function registerIpc() {
   ipcMain.handle('recent:add', (_e, filePath: string) => addRecentFile(filePath))
   ipcMain.handle('recent:remove', (_e, filePath: string) => removeRecentFile(filePath))
   ipcMain.handle('recent:clear', () => clearRecentFiles())
+  ipcMain.handle('settings:getUiLanguage', () => getUiLanguage())
+  ipcMain.handle('settings:setUiLanguage', async (_e, language: unknown) => {
+    await setUiLanguage(language)
+    if (language === 'zh-CN' || language === 'en-US') {
+      setCurrentMenuLanguage(language as UiLanguage)
+      buildMenu()
+    }
+  })
   ipcMain.handle('app:getVersion', () => app.getVersion())
   ipcMain.handle('update:check', () => checkForUpdates())
   ipcMain.handle('update:download', async (_e, downloadUrl: string) => {
@@ -548,6 +583,7 @@ if (!gotLock) {
     })
 
     if (!isDev) await ensureLocalServer()
+    await resolveStartupLanguage()
     registerFoxitProtocol()
     registerIpc()
     void registerPdfFileAssociation().catch(() => undefined)

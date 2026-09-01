@@ -90,7 +90,9 @@ function normalizeFsPath(value: string) {
 function commandPointsToLitePdf(command: string) {
   const text = normalizeFsPath(command)
   if (!text) return false
+  // 以安装产物为准；开发态 electron.exe 不应被当成「已是默认 PDF 应用」
   if (text.includes('litepdf.exe')) return true
+  if (!app.isPackaged) return false
   const self = normalizeFsPath(exePath())
   return !!self && text.includes(self)
 }
@@ -279,27 +281,21 @@ export async function getPdfAssociationStatus(): Promise<PdfAssociationStatus> {
   const packaged = app.isPackaged
   const platform = process.platform
 
-  if (!packaged) {
-    return {
-      packaged,
-      registered: false,
-      isDefault: false,
-      canSetDefault: false,
-      platform,
-      message: '开发模式不会注册系统文件关联，请使用安装包验证右键打开与默认应用。',
-    }
-  }
-
+  // 开发态也检测本机是否已将「安装版 LitePDF」设为默认；不能只因未打包就短路
   if (platform === 'win32') {
     const registered = await isWindowsRegistered()
     const isDefault = await isWindowsDefaultHandler()
     let message = '尚未注册为 PDF 打开方式。'
     if (isDefault) message = 'LitePDF 已是本机 PDF 的默认应用。'
+    else if (!packaged)
+      message =
+        '开发模式可检测本机默认应用。点击将打开系统设置；完整右键关联请使用安装包。'
     else if (registered) message = '已加入右键「使用 LitePDF 打开」。可将 LitePDF 设为默认 PDF 应用。'
     return {
       packaged,
       registered,
       isDefault,
+      // 未成为默认时允许点击：安装版会尝试注册+打开设置；开发态仅打开系统设置
       canSetDefault: !isDefault,
       platform,
       message,
@@ -317,7 +313,9 @@ export async function getPdfAssociationStatus(): Promise<PdfAssociationStatus> {
       platform,
       message: isDefault
         ? 'LitePDF 已是本机 PDF 的默认应用。'
-        : '已出现在「打开方式」中。点击按钮可将 LitePDF 设为默认 PDF 应用。',
+        : packaged
+          ? '已出现在「打开方式」中。点击按钮可将 LitePDF 设为默认 PDF 应用。'
+          : '开发模式可检测本机默认应用。点击将尝试设置；完整验证请使用安装包。',
     }
   }
 
@@ -351,7 +349,46 @@ async function openWindowsDefaultAppsSettings() {
 }
 
 export async function setAsDefaultPdfHandler(): Promise<SetDefaultPdfResult> {
+  // 开发态不写注册表/文件关联，但允许检测状态并打开系统默认应用设置
   if (!app.isPackaged) {
+    if (process.platform === 'win32') {
+      const isDefault = await isWindowsDefaultHandler()
+      if (isDefault) {
+        return {
+          ok: true,
+          isDefault: true,
+          openedSystemSettings: false,
+          message: 'LitePDF 已是本机 PDF 的默认应用。',
+        }
+      }
+      const openedSystemSettings = await openWindowsDefaultAppsSettings()
+      return {
+        ok: true,
+        isDefault: false,
+        openedSystemSettings,
+        message: openedSystemSettings
+          ? '已打开系统设置。请将 .pdf 指定为已安装的 LitePDF。开发模式不会注册开发态 Electron 为默认应用。'
+          : '开发模式不会注册文件关联。请安装 LitePDF 后，在系统「默认应用」中将 PDF 指定为 LitePDF。',
+      }
+    }
+    if (process.platform === 'darwin') {
+      const handler = await macDefaultHandlerId()
+      if (handler === APP_BUNDLE_ID) {
+        return {
+          ok: true,
+          isDefault: true,
+          openedSystemSettings: false,
+          message: 'LitePDF 已是本机 PDF 的默认应用。',
+        }
+      }
+      return {
+        ok: false,
+        isDefault: false,
+        openedSystemSettings: false,
+        message:
+          '开发模式无法改写 macOS 默认应用。请使用安装包，或在访达中选中 PDF → 显示简介 → 打开方式选择 LitePDF → 全部更改。',
+      }
+    }
     return {
       ok: false,
       isDefault: false,

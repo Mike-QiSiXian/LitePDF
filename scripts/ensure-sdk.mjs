@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import './ensure-windows-utf8.mjs'
 import { parseLicenseScript } from './parse-license.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))

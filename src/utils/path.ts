@@ -9,20 +9,32 @@ export function summarizePath(filePath: string, max = 56) {
   return `${filePath.slice(0, keep)}…${name}`
 }
 
+type TimeLang = 'zh-CN' | 'en-US' | string
+
 /** 夸克风格相对时间：今天/昨天 HH:mm，更早则显示日期 */
-export function formatTime(ts: number) {
+export function formatTime(ts: number, lang: TimeLang = 'zh-CN') {
   const d = new Date(ts)
   if (Number.isNaN(d.getTime())) return ''
 
+  const locale = lang.startsWith('en') ? 'en-US' : 'zh-CN'
   const now = new Date()
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const startOfThat = new Date(d.getFullYear(), d.getMonth(), d.getDate())
   const dayDiff = Math.round((startOfToday.getTime() - startOfThat.getTime()) / 86400000)
-  const hm = new Intl.DateTimeFormat('zh-CN', {
+  const hm = new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   }).format(d)
+
+  if (locale === 'en-US') {
+    if (dayDiff === 0) return `Today ${hm}`
+    if (dayDiff === 1) return `Yesterday ${hm}`
+    if (d.getFullYear() === now.getFullYear()) {
+      return `${d.getMonth() + 1}/${d.getDate()} ${hm}`
+    }
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
+  }
 
   if (dayDiff === 0) return `今天 ${hm}`
   if (dayDiff === 1) return `昨天 ${hm}`

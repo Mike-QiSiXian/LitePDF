@@ -1,8 +1,24 @@
+import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import electron from 'vite-plugin-electron/simple'
+
+function ensureWindowsUtf8Console() {
+  if (process.platform !== 'win32') return
+  try {
+    execSync('chcp 65001 >NUL', {
+      stdio: 'ignore',
+      windowsHide: true,
+      shell: true,
+    })
+  } catch {
+    // ignore
+  }
+}
+
+ensureWindowsUtf8Console()
 
 /** 开发时 public/foxit-* 走 Vite 静态资源；打包进 dist 会导致安装包重复携带 SDK */
 function excludeFoxitFromDist() {

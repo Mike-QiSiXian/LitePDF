@@ -14,6 +14,10 @@ contextBridge.exposeInMainWorld('litepdf', {
   removeRecentFile: (filePath: string) =>
     ipcRenderer.invoke('recent:remove', filePath) as Promise<RecentFileItem[]>,
   clearRecentFiles: () => ipcRenderer.invoke('recent:clear') as Promise<void>,
+  getUiLanguage: () =>
+    ipcRenderer.invoke('settings:getUiLanguage') as Promise<'zh-CN' | 'en-US' | null>,
+  setUiLanguage: (language: 'zh-CN' | 'en-US') =>
+    ipcRenderer.invoke('settings:setUiLanguage', language) as Promise<void>,
   getAppVersion: () => ipcRenderer.invoke('app:getVersion') as Promise<string>,
   checkForUpdates: () =>
     ipcRenderer.invoke('update:check') as Promise<UpdateCheckResult>,

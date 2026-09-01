@@ -3,6 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { isBrowserDebugMode } from '@/browser/litepdf-shim'
 import AboutDialog from '@/components/AboutDialog.vue'
 import { showAppAlert } from '@/composables/useAppAlert'
+import { useI18n } from '@/i18n'
+import { describePdfAssociation, describeSetDefaultResult } from '@/i18n/assoc-text'
 import { useRecentStore } from '@/stores/recent'
 import { formatSize, formatTime } from '@/utils/path'
 
@@ -11,19 +13,23 @@ const emit = defineEmits<{
   openPath: [path: string]
 }>()
 
+const { t, language } = useI18n()
 const recent = useRecentStore()
 const browserMode = computed(() => isBrowserDebugMode())
 
 type SortMode = 'recent-desc' | 'recent-asc' | 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc'
 
-const SORT_OPTIONS: { id: SortMode; label: string; chip: string }[] = [
-  { id: 'recent-desc', label: '最近打开（新→旧）', chip: '↓ 最近' },
-  { id: 'recent-asc', label: '最近打开（旧→新）', chip: '↑ 最早' },
-  { id: 'name-asc', label: '文件名（A→Z）', chip: '↑ 名称' },
-  { id: 'name-desc', label: '文件名（Z→A）', chip: '↓ 名称' },
-  { id: 'size-desc', label: '文件大小（大→小）', chip: '↓ 大小' },
-  { id: 'size-asc', label: '文件大小（小→大）', chip: '↑ 大小' },
-]
+const SORT_OPTIONS = computed(() => {
+  void language.value
+  return [
+    { id: 'recent-desc' as const, label: t('welcome.sortRecentDesc'), chip: t('welcome.chipRecentDesc') },
+    { id: 'recent-asc' as const, label: t('welcome.sortRecentAsc'), chip: t('welcome.chipRecentAsc') },
+    { id: 'name-asc' as const, label: t('welcome.sortNameAsc'), chip: t('welcome.chipNameAsc') },
+    { id: 'name-desc' as const, label: t('welcome.sortNameDesc'), chip: t('welcome.chipNameDesc') },
+    { id: 'size-desc' as const, label: t('welcome.sortSizeDesc'), chip: t('welcome.chipSizeDesc') },
+    { id: 'size-asc' as const, label: t('welcome.sortSizeAsc'), chip: t('welcome.chipSizeAsc') },
+  ]
+})
 
 const sortMode = ref<SortMode>('recent-desc')
 const sortMenuOpen = ref(false)
@@ -83,14 +89,20 @@ async function setDefaultPdf() {
     }
     window.dispatchEvent(new CustomEvent('litepdf:pdf-assoc-changed'))
     showAppAlert({
-      title: result.isDefault ? '已设为默认应用' : '请在系统设置中确认',
-      message: result.message,
+      title: result.isDefault ? t('alert.setDefaultSuccess') : t('alert.setDefaultConfirm'),
+      message: describeSetDefaultResult({
+        ok: result.ok,
+        isDefault: result.isDefault,
+        openedSystemSettings: result.openedSystemSettings,
+        message: result.message,
+        platform: String(window.litepdf.platform),
+      }),
       tone: result.isDefault || result.ok ? 'info' : 'error',
     })
   } catch (error) {
     showAppAlert({
-      title: '设置失败',
-      message: error instanceof Error ? error.message : '设置默认应用失败',
+      title: t('alert.setDefaultFailed'),
+      message: error instanceof Error ? error.message : t('app.setDefaultFailedMessage'),
       tone: 'error',
     })
   } finally {
@@ -99,12 +111,12 @@ async function setDefaultPdf() {
 }
 
 const sortChipLabel = computed(
-  () => SORT_OPTIONS.find((o) => o.id === sortMode.value)?.chip ?? '↓ 最近',
+  () => SORT_OPTIONS.value.find((o) => o.id === sortMode.value)?.chip ?? t('welcome.chipRecentDesc'),
 )
 
 const sortedItems = computed(() => {
   const list = [...recent.items]
-  const collator = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' })
+  const collator = new Intl.Collator(language.value, { numeric: true, sensitivity: 'base' })
 
   list.sort((a, b) => {
     switch (sortMode.value) {
@@ -127,33 +139,16 @@ const sortedItems = computed(() => {
 })
 
 /** 能力卡片：对齐夸克首页结构，内容映射 LitePDF V1 能力 */
-const featureCards = [
-  {
-    id: 'welcome',
-    label: '欢迎使用 LitePDF',
-    tone: 'welcome',
-  },
-  {
-    id: 'annot',
-    label: '批注与高亮',
-    tone: 'annot',
-  },
-  {
-    id: 'search',
-    label: '全文搜索',
-    tone: 'search',
-  },
-  {
-    id: 'tabs',
-    label: '多标签阅读',
-    tone: 'tabs',
-  },
-  {
-    id: 'save',
-    label: '另存带注释',
-    tone: 'save',
-  },
-] as const
+const featureCards = computed(() => {
+  void language.value
+  return [
+    { id: 'welcome', label: t('welcome.featureWelcome'), tone: 'welcome' },
+    { id: 'annot', label: t('welcome.featureAnnot'), tone: 'annot' },
+    { id: 'search', label: t('welcome.featureSearch'), tone: 'search' },
+    { id: 'tabs', label: t('welcome.featureTabs'), tone: 'tabs' },
+    { id: 'save', label: t('welcome.featureSave'), tone: 'save' },
+  ] as const
+})
 
 function onDocClick() {
   sortMenuOpen.value = false
@@ -190,6 +185,15 @@ function selectSort(mode: SortMode, e: MouseEvent) {
 function showInFolder(filePath: string) {
   void window.litepdf.showItemInFolder?.(filePath)
 }
+
+function displayTime(ts: number) {
+  return formatTime(ts, language.value)
+}
+
+const assocDescription = computed(() => {
+  void language.value
+  return assoc.value ? describePdfAssociation(assoc.value) : ''
+})
 </script>
 
 <template>
@@ -198,16 +202,16 @@ function showInFolder(filePath: string) {
       <header class="welcome-header">
         <h1 class="brand">LitePDF</h1>
         <div class="header-aside">
-          <span class="drag-hint">可将 PDF 拖入窗口打开</span>
+          <span class="drag-hint">{{ t('welcome.dragHint') }}</span>
         </div>
       </header>
 
       <p v-if="browserMode" class="browser-banner">
-        当前为浏览器调试模式。桌面完整能力请使用 Electron 窗口（npm run dev）。
+        {{ t('welcome.browserBanner') }}
       </p>
 
       <!-- 快捷入口：首张为打开，其余为能力示意（对齐夸克卡片行） -->
-      <section class="feature-row" aria-label="快捷功能">
+      <section class="feature-row" :aria-label="t('welcome.shortcutsAria')">
         <button type="button" class="feat-card feat-card-open" @click="emit('open')">
           <div class="feat-preview feat-preview-open">
             <span class="plus-btn" aria-hidden="true">
@@ -218,9 +222,9 @@ function showInFolder(filePath: string) {
                 />
               </svg>
             </span>
-            <span class="open-caption">打开新文件</span>
+            <span class="open-caption">{{ t('welcome.openNewFile') }}</span>
           </div>
-          <div class="feat-label">打开PDF文件</div>
+          <div class="feat-label">{{ t('welcome.openPdfFile') }}</div>
         </button>
 
         <div
@@ -231,7 +235,7 @@ function showInFolder(filePath: string) {
         >
           <div class="feat-preview" :class="`feat-preview-${card.tone}`">
             <div class="feat-art" aria-hidden="true" />
-            <span class="feat-tag">能力</span>
+            <span class="feat-tag">{{ t('common.capability') }}</span>
           </div>
           <div class="feat-label">{{ card.label }}</div>
         </div>
@@ -239,7 +243,7 @@ function showInFolder(filePath: string) {
 
       <section class="recent">
         <div class="recent-head">
-          <h2>最近打开</h2>
+          <h2>{{ t('welcome.recentTitle') }}</h2>
           <div class="recent-actions">
             <div class="sort-wrap">
               <button
@@ -249,7 +253,7 @@ function showInFolder(filePath: string) {
                 :disabled="!recent.items.length"
                 :aria-expanded="sortMenuOpen"
                 aria-haspopup="listbox"
-                title="排序方式"
+                :title="t('welcome.sortTitle')"
                 @click="toggleSortMenu"
               >
                 ↑↓ {{ sortChipLabel.replace(/^[↑↓]\s*/, '') }}
@@ -283,12 +287,12 @@ function showInFolder(filePath: string) {
               :disabled="!recent.items.length"
               @click="recent.clear()"
             >
-              清空
+              {{ t('welcome.clear') }}
             </button>
           </div>
         </div>
 
-        <div v-if="!recent.items.length" class="empty">暂无最近打开的文件</div>
+        <div v-if="!recent.items.length" class="empty">{{ t('welcome.emptyRecent') }}</div>
         <ul v-else class="recent-list">
           <li
             v-for="item in sortedItems"
@@ -327,18 +331,18 @@ function showInFolder(filePath: string) {
               </span>
               <span class="file-name">
                 {{ item.name }}
-                <span v-if="item.missing" class="badge">失效</span>
+                <span v-if="item.missing" class="badge">{{ t('welcome.missing') }}</span>
               </span>
-              <span class="file-time">{{ formatTime(item.lastOpenedAt) }}</span>
+              <span class="file-time">{{ displayTime(item.lastOpenedAt) }}</span>
               <span class="file-size">{{ formatSize(item.sizeBytes) }}</span>
-              <span class="file-tag">本地文档</span>
+              <span class="file-tag">{{ t('common.localDocument') }}</span>
             </button>
 
             <div class="row-actions">
               <button
                 type="button"
                 class="icon-btn"
-                title="在文件夹中显示"
+                :title="t('welcome.showInFolder')"
                 :disabled="item.missing || browserMode"
                 @click="showInFolder(item.path)"
               >
@@ -352,7 +356,7 @@ function showInFolder(filePath: string) {
               <button
                 type="button"
                 class="icon-btn danger"
-                title="从列表移除"
+                :title="t('welcome.removeFromList')"
                 @click="recent.remove(item.path)"
               >
                 <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
@@ -369,22 +373,22 @@ function showInFolder(filePath: string) {
 
       <footer class="welcome-footer">
         <button type="button" class="about-link" @click="aboutOpen = true">
-          关于 LitePDF
+          {{ t('welcome.about') }}
         </button>
         <button
           v-if="!browserMode"
           type="button"
           class="about-link"
           :disabled="assocBusy || assoc?.isDefault || assoc?.canSetDefault === false"
-          :title="assoc?.message"
+          :title="assocDescription"
           @click="setDefaultPdf"
         >
           {{
             assocBusy
-              ? '正在设置…'
+              ? t('welcome.settingDefault')
               : assoc?.isDefault
-                ? '已是默认 PDF 应用'
-                : '设为默认 PDF 阅读器'
+                ? t('welcome.alreadyDefault')
+                : t('welcome.setAsDefault')
           }}
         </button>
       </footer>

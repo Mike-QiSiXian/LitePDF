@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import logoUrl from '@/assets/litepdf-icon.png'
 import { showAppAlert } from '@/composables/useAppAlert'
+import { useI18n, type UiLanguage } from '@/i18n'
+import { describePdfAssociation, describeSetDefaultResult } from '@/i18n/assoc-text'
 
 const props = defineProps<{
   open: boolean
@@ -11,12 +13,14 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const { t, language, changeLanguage } = useI18n()
 const version = ref('—')
 const checking = ref(false)
 const downloading = ref(false)
 const result = ref<UpdateCheckResult | null>(null)
 const assoc = ref<PdfAssociationStatus | null>(null)
 const assocBusy = ref(false)
+const languageBusy = ref(false)
 const showAssoc = computed(() => window.litepdf.platform !== 'browser')
 let offPdfAssocChanged: (() => void) | undefined
 let assocPollTimer: number | undefined
@@ -32,7 +36,7 @@ async function loadVersion() {
   try {
     version.value = await window.litepdf.getAppVersion()
   } catch {
-    version.value = '未知'
+    version.value = t('about.unknownVersion')
   }
 }
 
@@ -78,18 +82,40 @@ async function setDefaultPdf() {
     }
     window.dispatchEvent(new CustomEvent('litepdf:pdf-assoc-changed'))
     showAppAlert({
-      title: outcome.isDefault ? '已设为默认应用' : '请在系统设置中确认',
-      message: outcome.message,
+      title: outcome.isDefault ? t('alert.setDefaultSuccess') : t('alert.setDefaultConfirm'),
+      message: describeSetDefaultResult({
+        ok: outcome.ok,
+        isDefault: outcome.isDefault,
+        openedSystemSettings: outcome.openedSystemSettings,
+        message: outcome.message,
+        platform: String(window.litepdf.platform),
+      }),
       tone: outcome.isDefault || outcome.ok ? 'info' : 'error',
     })
   } catch (error) {
     showAppAlert({
-      title: '设置失败',
-      message: error instanceof Error ? error.message : '设置默认应用失败',
+      title: t('alert.setDefaultFailed'),
+      message: error instanceof Error ? error.message : t('app.setDefaultFailedMessage'),
       tone: 'error',
     })
   } finally {
     assocBusy.value = false
+  }
+}
+
+
+const assocDescription = computed(() => {
+  void language.value
+  return assoc.value ? describePdfAssociation(assoc.value) : ''
+})
+
+async function switchLanguage(next: UiLanguage) {
+  if (next === language.value || languageBusy.value) return
+  languageBusy.value = true
+  try {
+    await changeLanguage(next)
+  } finally {
+    languageBusy.value = false
   }
 }
 
@@ -102,7 +128,7 @@ async function checkUpdates() {
     result.value = {
       status: 'error',
       currentVersion: version.value,
-      message: error instanceof Error ? error.message : '检查更新失败',
+      message: error instanceof Error ? error.message : t('about.checkFailed'),
     }
   } finally {
     checking.value = false
@@ -161,20 +187,44 @@ onBeforeUnmount(() => {
         aria-modal="true"
         aria-labelledby="about-title"
       >
-        <button type="button" class="about-close" aria-label="关闭" @click="emit('close')">
+        <button type="button" class="about-close" :aria-label="t('about.closeAria')" @click="emit('close')">
           ×
         </button>
 
         <div class="about-header">
           <img class="about-logo" :src="logoUrl" alt="" aria-hidden="true" />
           <h2 id="about-title">LitePDF</h2>
-          <p class="about-subtitle">轻量、专注的多标签 PDF 阅读器</p>
-          <p class="about-version">当前版本 v{{ version }}</p>
+          <p class="about-subtitle">{{ t('about.subtitle') }}</p>
+          <p class="about-version">{{ t('about.currentVersion', { version }) }}</p>
+        </div>
+
+        <div class="lang-box" role="group" :aria-label="t('about.language')">
+          <strong>{{ t('about.language') }}</strong>
+          <div class="lang-switch">
+            <button
+              type="button"
+              class="lang-btn"
+              :class="{ active: language === 'zh-CN' }"
+              :disabled="languageBusy"
+              @click="switchLanguage('zh-CN')"
+            >
+              {{ t('about.simplifiedChinese') }}
+            </button>
+            <button
+              type="button"
+              class="lang-btn"
+              :class="{ active: language === 'en-US' }"
+              :disabled="languageBusy"
+              @click="switchLanguage('en-US')"
+            >
+              {{ t('about.english') }}
+            </button>
+          </div>
         </div>
 
         <div v-if="assoc && showAssoc" class="assoc-box">
-          <strong>{{ assoc.isDefault ? '已是默认 PDF 应用' : '系统 PDF 关联' }}</strong>
-          <span>{{ assoc.message }}</span>
+          <strong>{{ assoc.isDefault ? t('about.alreadyDefault') : t('about.systemAssoc') }}</strong>
+          <span>{{ assocDescription }}</span>
           <button
             type="button"
             class="secondary-btn assoc-btn"
@@ -183,10 +233,10 @@ onBeforeUnmount(() => {
           >
             {{
               assocBusy
-                ? '正在设置…'
+                ? t('about.setting')
                 : assoc.isDefault
-                  ? '已设为默认'
-                  : '设为默认 PDF 阅读器'
+                  ? t('about.setAsDefaultDone')
+                  : t('about.setAsDefault')
             }}
           </button>
         </div>
@@ -199,21 +249,21 @@ onBeforeUnmount(() => {
         >
           <div class="update-summary">
             <strong v-if="result.status === 'available'">
-              发现新版本 v{{ result.latestVersion }}
+              {{ t('about.newVersion', { version: result.latestVersion || '' }) }}
             </strong>
-            <strong v-else-if="result.status === 'up-to-date'">当前已是最新版本</strong>
-            <strong v-else-if="result.status === 'error'">检查更新失败</strong>
-            <strong v-else>暂时无法检查更新</strong>
+            <strong v-else-if="result.status === 'up-to-date'">{{ t('about.upToDate') }}</strong>
+            <strong v-else-if="result.status === 'error'">{{ t('about.checkFailed') }}</strong>
+            <strong v-else>{{ t('about.checkUnavailable') }}</strong>
             <span>{{ result.message }}</span>
             <span v-if="result.status === 'available'" class="install-tip">
-              下载完成后，请运行安装包完成升级。
+              {{ t('about.installTip') }}
             </span>
           </div>
           <div
             v-if="result.status === 'available' && result.releaseNotes && result.latestVersion"
             class="release-notes"
           >
-            <strong>v{{ result.latestVersion }} 更新内容</strong>
+            <strong>{{ t('about.releaseNotes', { version: result.latestVersion }) }}</strong>
             <pre>{{ result.releaseNotes }}</pre>
           </div>
         </div>
@@ -227,7 +277,7 @@ onBeforeUnmount(() => {
             :disabled="downloading"
             @click="downloadLatest"
           >
-            {{ downloading ? '正在打开下载…' : '下载最新版本' }}
+            {{ downloading ? t('about.openingDownload') : t('about.downloadLatest') }}
           </button>
           <button
             v-else
@@ -236,9 +286,9 @@ onBeforeUnmount(() => {
             :disabled="checking"
             @click="checkUpdates"
           >
-            {{ checking ? '正在检查…' : '检查更新' }}
+            {{ checking ? t('about.checking') : t('about.checkUpdate') }}
           </button>
-          <button type="button" class="secondary-btn" @click="emit('close')">关闭</button>
+          <button type="button" class="secondary-btn" @click="emit('close')">{{ t('common.close') }}</button>
           </div>
 
           <p class="about-copyright">Copyright © LitePDF</p>
@@ -325,9 +375,59 @@ h2 {
 }
 
 .about-version {
-  margin: 12px 0 20px;
+  margin: 12px 0 0;
   color: #8b93a7;
   font-size: 13px;
+}
+
+.lang-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
+  text-align: left;
+}
+
+.lang-box strong {
+  color: #334155;
+  font-size: 13px;
+}
+
+.lang-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.lang-btn {
+  height: 34px;
+  border: 1px solid #d9dde5;
+  border-radius: 8px;
+  background: #fff;
+  color: #4b5563;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.lang-btn:hover:not(:disabled) {
+  background: #f7f8fa;
+}
+
+.lang-btn.active {
+  border-color: #2d5af7;
+  background: #eff4ff;
+  color: #2d5af7;
+  font-weight: 600;
+}
+
+.lang-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 
 .assoc-box {
@@ -335,7 +435,7 @@ h2 {
   flex-direction: column;
   gap: 6px;
   flex-shrink: 0;
-  margin: -8px 0 16px;
+  margin: 16px 0;
   padding: 12px 14px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -461,9 +561,10 @@ h2 {
   background: #244edb;
 }
 
-.primary-btn:disabled {
-  opacity: 0.65;
-  cursor: wait;
+.primary-btn:disabled,
+.secondary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .secondary-btn {
@@ -472,7 +573,7 @@ h2 {
   color: #4b5563;
 }
 
-.secondary-btn:hover {
+.secondary-btn:hover:not(:disabled) {
   background: #f7f8fa;
 }
 

@@ -15,10 +15,15 @@ export const LITE_LAYOUT_TEMPLATE = `
         class="litepdf-icon-btn"
         icon-class="litepdf-icon-sidebar-expand"
         @tooltip
-        tooltip-title="缩略图/书签/注释列表"
+        tooltip-title="litepdf:sidebar.navigation"
         @controller="litepdf:SidebarToggleController"
       ></xbutton>
-      <div name="litepdf-filename" class="litepdf-filename" title="">未打开文件</div>
+      <!-- 文件名由业务层写入真实名称；勿挂 data-i18n，否则切语言会覆盖成「未打开文件」 -->
+      <div
+        name="litepdf-filename"
+        class="litepdf-filename"
+        title=""
+      ></div>
     </div>
 
     <div
@@ -39,7 +44,7 @@ export const LITE_LAYOUT_TEMPLATE = `
         name="comment-tab"
         group="toolbar-tab"
         body="fv--comment-tab-paddle"
-        text="批注"
+        text="toolbar.tabs.comment.title"
         @aria:toolbar.tab
       ></gtab>
     </div>
@@ -51,7 +56,7 @@ export const LITE_LAYOUT_TEMPLATE = `
           class="litepdf-icon-btn"
           icon-class="fv__icon-sidebar-search"
           @tooltip
-          tooltip-title="搜索"
+          tooltip-title="sidebar.search.title"
           @controller="mobile:SearchToggleButtonController"
         ></xbutton>
         <xbutton
@@ -59,7 +64,7 @@ export const LITE_LAYOUT_TEMPLATE = `
           class="litepdf-icon-btn"
           icon-class="fv__icon-toolbar-print"
           @tooltip
-          tooltip-title="打印"
+          tooltip-title="menuItemTree.home.print"
           @controller="print:ShowPrintDialogController"
         ></xbutton>
         <xbutton
@@ -67,7 +72,7 @@ export const LITE_LAYOUT_TEMPLATE = `
           class="litepdf-icon-btn"
           icon-class="fv__icon-toolbar-download"
           @tooltip
-          tooltip-title="另存为"
+          tooltip-title="menuItemTree.saveAs.index"
           @controller="file:DownloadFileController"
         ></xbutton>
         <!-- 更多：对齐官方 search-bar「查找选项」——按钮 + contextmenu.showAt -->
@@ -76,7 +81,7 @@ export const LITE_LAYOUT_TEMPLATE = `
           class="litepdf-icon-btn litepdf-more-btn"
           icon-class="litepdf-icon-more"
           @tooltip
-          tooltip-title="更多"
+          tooltip-title="toolbar.more.document.title"
           @controller="litepdf:MoreMenuButtonController"
         ></xbutton>
     </div>
@@ -102,14 +107,14 @@ export const LITE_LAYOUT_TEMPLATE = `
               name="litepdf-prev-view-btn"
               icon-class="fv__icon-toolbar-previous-view"
               @tooltip
-              tooltip-title="返回上一视图"
+              tooltip-title="menuItemTree.home.prevView"
               @controller="litepdf:PrevViewController"
             ></xbutton>
             <xbutton
               name="litepdf-next-view-btn"
               icon-class="fv__icon-toolbar-next-view"
               @tooltip
-              tooltip-title="跳转到下一视图"
+              tooltip-title="menuItemTree.home.nextView"
               @controller="litepdf:NextViewController"
             ></xbutton>
           </group>
@@ -132,8 +137,8 @@ export const LITE_LAYOUT_TEMPLATE = `
                 <ribbon-button
                   name="litepdf-undo-btn"
                   @tooltip
-                  tooltip-title="撤销"
-                  text="撤销"
+                  tooltip-title="toolbar.tooltip.undo.title"
+                  text="toolbar.tooltip.undo.title"
                   not-dropdown="true"
                   icon-class="fv__icon-toolbar-undo"
                   @controller="litepdf:UndoController"
@@ -141,8 +146,8 @@ export const LITE_LAYOUT_TEMPLATE = `
                 <ribbon-button
                   name="litepdf-redo-btn"
                   @tooltip
-                  tooltip-title="重做"
-                  text="重做"
+                  tooltip-title="toolbar.tooltip.redo.title"
+                  text="toolbar.tooltip.redo.title"
                   not-dropdown="true"
                   icon-class="fv__icon-toolbar-redo"
                   @controller="litepdf:RedoController"
@@ -157,8 +162,8 @@ export const LITE_LAYOUT_TEMPLATE = `
                 <ribbon-button
                   name="create-highlight"
                   @tooltip
-                  tooltip-title="文本高亮"
-                  text="文本高亮"
+                  tooltip-title="litepdf:toolbar.textHighlight"
+                  text="litepdf:toolbar.textHighlight"
                   not-dropdown="true"
                   icon-class="litepdf-icon-highlight"
                   @controller="states:CreateHighlightController"
@@ -167,8 +172,8 @@ export const LITE_LAYOUT_TEMPLATE = `
                 <ribbon-button
                   name="create-area-highlight"
                   @tooltip
-                  tooltip-title="区域高亮"
-                  text="区域高亮"
+                  tooltip-title="toolbar.tooltip.areaHighlight.title"
+                  text="toolbar.tooltip.areaHighlight.title"
                   not-dropdown="true"
                   icon-class="litepdf-icon-area-highlight"
                   @controller="states:CreateAreaHighlightController"
@@ -179,8 +184,8 @@ export const LITE_LAYOUT_TEMPLATE = `
                 <ribbon-button
                   name="pencil-tool"
                   @tooltip
-                  tooltip-title="画笔工具"
-                  text="画笔工具"
+                  tooltip-title="litepdf:toolbar.pencil"
+                  text="litepdf:toolbar.pencil"
                   not-dropdown="true"
                   icon-class="litepdf-icon-pencil"
                   @controller="states:CreatePencilController"
@@ -188,8 +193,8 @@ export const LITE_LAYOUT_TEMPLATE = `
                 <ribbon-button
                   name="eraser-tool"
                   @tooltip
-                  tooltip-title="局部擦除"
-                  text="局部擦除"
+                  tooltip-title="litepdf:toolbar.eraser"
+                  text="litepdf:toolbar.eraser"
                   icon-class="litepdf-icon-eraser"
                   @controller="states:EraserController"
                 ></ribbon-button>
@@ -246,7 +251,7 @@ export const LITE_LAYOUT_TEMPLATE = `
     <viewer @zoom-on-pinch @zoom-on-doubletap @zoom-on-wheel @touch-to-scroll></viewer>
     <sidebar-right min-width="280" max-width="360" name="sidebar-right" @lazy-content="shown">
       <sidebar-tabs name="sidebar-right-tabs">
-        <sidebar-tab-panel name="right-search-panel" tab-title="搜索">
+        <sidebar-tab-panel name="right-search-panel" tab-title="sidebar.search.title">
           <search:advanced-search name="advanced-search"></search:advanced-search>
         </sidebar-tab-panel>
       </sidebar-tabs>
@@ -296,19 +301,19 @@ export const LITE_LAYOUT_TEMPLATE = `
         action="annotations"
         icon-class="litepdf-more-icon-annot"
         @controller="litepdf:MoreMenuController"
-      >注解</contextmenu-item>
+      >litepdf:moreMenu.annotations</contextmenu-item>
       <contextmenu-item
         name="litepdf-more-play"
         action="play"
         icon-class="litepdf-more-icon-play"
         @controller="litepdf:MoreMenuController"
-      >播放</contextmenu-item>
+      >litepdf:moreMenu.presentation</contextmenu-item>
       <contextmenu-item
         name="litepdf-more-props"
         action="properties"
         icon-class="litepdf-more-icon-props"
         @controller="litepdf:MoreMenuController"
-      >文档属性</contextmenu-item>
+      >litepdf:moreMenu.properties</contextmenu-item>
     </contextmenu>
     <comment-list:filter-dialog name="fv--commentlist-filter-comment-dialog"></comment-list:filter-dialog>
   </template>

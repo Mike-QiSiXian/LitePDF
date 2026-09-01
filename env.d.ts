@@ -54,6 +54,8 @@ interface LitePdfApi {
   addRecentFile: (filePath: string) => Promise<RecentFileItem[]>
   removeRecentFile: (filePath: string) => Promise<RecentFileItem[]>
   clearRecentFiles: () => Promise<void>
+  getUiLanguage?: () => Promise<'zh-CN' | 'en-US' | null>
+  setUiLanguage?: (language: 'zh-CN' | 'en-US') => Promise<void>
   getAppVersion: () => Promise<string>
   checkForUpdates: () => Promise<UpdateCheckResult>
   downloadUpdate: (downloadUrl: string) => Promise<void>
