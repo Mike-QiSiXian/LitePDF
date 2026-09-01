@@ -49,6 +49,7 @@ import {
   resolveStartupLanguage,
   setCurrentMenuLanguage,
 } from './i18n-menu'
+import { downloadAndInstallUpdate } from './install-update'
 import { startLocalStaticServer, type LocalStaticServer } from './local-static-server'
 
 const isDev = !app.isPackaged
@@ -503,16 +504,7 @@ function registerIpc() {
   ipcMain.handle('app:getVersion', () => app.getVersion())
   ipcMain.handle('update:check', () => checkForUpdates())
   ipcMain.handle('update:download', async (_e, downloadUrl: string) => {
-    const url = new URL(downloadUrl)
-    const allowedHosts = new Set([
-      'github.com',
-      'objects.githubusercontent.com',
-      'github-releases.githubusercontent.com',
-    ])
-    if (url.protocol !== 'https:' || !allowedHosts.has(url.hostname)) {
-      throw new Error('无效的更新下载地址')
-    }
-    await shell.openExternal(url.toString())
+    await downloadAndInstallUpdate(downloadUrl)
   })
   ipcMain.handle('foxit:libUrl', () => getFoxitLibUrl())
   ipcMain.handle('foxit:workerLibUrl', () => getFoxitWorkerLibUrl())

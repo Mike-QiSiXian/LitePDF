@@ -33,6 +33,13 @@ interface SetDefaultPdfResult {
   message: string
 }
 
+interface UpdateProgress {
+  phase: 'downloading' | 'installing'
+  percent: number
+  transferred: number
+  total: number
+}
+
 interface UpdateCheckResult {
   status: 'available' | 'up-to-date' | 'unavailable' | 'error'
   currentVersion: string
@@ -59,6 +66,7 @@ interface LitePdfApi {
   getAppVersion: () => Promise<string>
   checkForUpdates: () => Promise<UpdateCheckResult>
   downloadUpdate: (downloadUrl: string) => Promise<void>
+  onUpdateProgress?: (callback: (progress: UpdateProgress) => void) => () => void
   onUpdateAvailable: (callback: (result: UpdateCheckResult) => void) => () => void
   onOpenFiles: (callback: (paths: string[]) => void) => () => void
   getFoxitLibUrl: () => Promise<string>

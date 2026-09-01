@@ -4,6 +4,7 @@ import logoUrl from '@/assets/litepdf-icon.png'
 import { showAppAlert } from '@/composables/useAppAlert'
 import { useI18n, type UiLanguage } from '@/i18n'
 import { describePdfAssociation, describeSetDefaultResult } from '@/i18n/assoc-text'
+import { useUpdateInstall } from '@/composables/useUpdateInstall'
 
 const props = defineProps<{
   open: boolean
@@ -14,9 +15,9 @@ const emit = defineEmits<{
 }>()
 
 const { t, language, changeLanguage } = useI18n()
+const { busy: updating, percent: updatePercent, installUpdate, actionLabel } = useUpdateInstall()
 const version = ref('—')
 const checking = ref(false)
-const downloading = ref(false)
 const result = ref<UpdateCheckResult | null>(null)
 const assoc = ref<PdfAssociationStatus | null>(null)
 const assocBusy = ref(false)
@@ -137,12 +138,7 @@ async function checkUpdates() {
 
 async function downloadLatest() {
   if (!result.value?.downloadUrl) return
-  downloading.value = true
-  try {
-    await window.litepdf.downloadUpdate(result.value.downloadUrl)
-  } finally {
-    downloading.value = false
-  }
+  await installUpdate(result.value.downloadUrl)
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -268,16 +264,27 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
+        <div
+          v-if="updating"
+          class="update-progress"
+          role="progressbar"
+          :aria-valuenow="updatePercent"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <div class="update-progress-bar" :style="{ width: `${updatePercent}%` }" />
+        </div>
+
         <div class="about-footer">
           <div class="about-actions">
             <button
             v-if="result?.status === 'available' && result.downloadUrl"
             type="button"
             class="primary-btn"
-            :disabled="downloading"
+            :disabled="updating"
             @click="downloadLatest"
           >
-            {{ downloading ? t('about.openingDownload') : t('about.downloadLatest') }}
+            {{ actionLabel() }}
           </button>
           <button
             v-else
@@ -507,6 +514,22 @@ h2 {
 
 .install-tip {
   color: #64748b;
+}
+
+.update-progress {
+  flex-shrink: 0;
+  height: 6px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.update-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: #0ea5e9;
+  transition: width 0.2s ease;
 }
 
 .release-notes {

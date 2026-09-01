@@ -23,6 +23,12 @@ contextBridge.exposeInMainWorld('litepdf', {
     ipcRenderer.invoke('update:check') as Promise<UpdateCheckResult>,
   downloadUpdate: (downloadUrl: string) =>
     ipcRenderer.invoke('update:download', downloadUrl) as Promise<void>,
+  onUpdateProgress: (callback: (progress: UpdateProgress) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: UpdateProgress) =>
+      callback(progress)
+    ipcRenderer.on('update:progress', handler)
+    return () => ipcRenderer.removeListener('update:progress', handler)
+  },
   onUpdateAvailable: (callback: (result: UpdateCheckResult) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, result: UpdateCheckResult) =>
       callback(result)

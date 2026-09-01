@@ -170,6 +170,10 @@ export function installBrowserLitePdfShim() {
       window.open(downloadUrl, '_blank', 'noopener,noreferrer')
     },
 
+    onUpdateProgress() {
+      return () => undefined
+    },
+
     onUpdateAvailable() {
       return () => undefined
     },

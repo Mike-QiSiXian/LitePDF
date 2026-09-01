@@ -2,17 +2,17 @@
 
 基于 **Electron + Vue 3 + Foxit PDF SDK for Web（UIExtension）** 的轻量多标签个人 PDF 阅读器。
 
-[最新版本 v0.1.9](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) · [全部 Release](https://github.com/Mike-QiSiXian/LitePDF/releases)
+[最新版本 v0.1.10](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) · [全部 Release](https://github.com/Mike-QiSiXian/LitePDF/releases)
 
 ## 下载安装包
 
-当前最新正式版：**v0.1.9**
+当前最新正式版：**v0.1.10**
 
 | 平台 | 安装包 | 说明 |
 | --- | --- | --- |
-| Windows x64 | [LitePDF-Setup-0.1.9.exe](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.9/LitePDF-Setup-0.1.9.exe) | 推荐；安装后可用右键「使用 LitePDF 打开」 |
-| macOS Apple Silicon | [LitePDF-0.1.9-arm64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.9/LitePDF-0.1.9-arm64.dmg) | Apple 芯片 |
-| macOS Intel | [LitePDF-0.1.9-x64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.9/LitePDF-0.1.9-x64.dmg) | Intel |
+| Windows x64 | [LitePDF-Setup-0.1.10.exe](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.10/LitePDF-Setup-0.1.10.exe) | 推荐；安装后可用右键「使用 LitePDF 打开」 |
+| macOS Apple Silicon | [LitePDF-0.1.9-arm64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.9/LitePDF-0.1.9-arm64.dmg) | Apple 芯片（v0.1.10 macOS 包待另行构建上传） |
+| macOS Intel | [LitePDF-0.1.9-x64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.9/LitePDF-0.1.9-x64.dmg) | Intel（v0.1.10 macOS 包待另行构建上传） |
 
 也可打开 [GitHub Releases](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) 查看完整更新说明与校验哈希。Windows 安装包未做 Authenticode 签名，系统可能提示「未知发布者」。macOS 未签名时，可按住 Control 点击后选择打开，或执行 `xattr -cr /Applications/LitePDF.app`。
 
@@ -26,6 +26,12 @@
 - SDK 适配层隔离：业务组件不直接调用全局 `PDFUI`
 
 ## 当前版本
+
+### v0.1.10
+
+- **一键覆盖更新**：发现新版本后点击「立即更新」，自动下载安装包并覆盖安装（Windows 静默安装；macOS 替换 `/Applications/LitePDF.app`）
+- 更新提示弹窗与关于页展示下载进度，按钮文案统一为「立即更新」
+- 更新提示弹窗支持中英文界面
 
 ### v0.1.9
 
@@ -112,7 +118,7 @@ npm run dev
 
 - **桌面窗口（推荐）**：`npm run dev` 会同时拉起 Electron，具备系统文件对话框与真实路径。
 - **浏览器调试**：也可打开 `http://localhost:5173/`。无 Electron API 时会自动注入浏览器替身，支持选择/拖入 PDF；刷新后需重新选择文件。
-- **更新检查**：安装版启动后会静默检查 GitHub Release；仅当远端版本高于当前版本且有对应安装包时提示，并展示该新版本的更新内容。
+- **更新检查**：安装版启动后会静默检查 GitHub Release；发现新版本后点击「立即更新」将自动下载并覆盖安装（Windows 静默安装 / macOS 替换应用），并展示下载进度。
 - **首开预热**：工作台空闲时后台加载 Foxit SDK 脚本与 License，并预创建首个 JR Worker；每个 PDF 标签页仍使用独立 Worker，不可共用。
 
 `predev` / `postinstall` 会：

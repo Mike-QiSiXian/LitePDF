@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useUpdateInstall } from '@/composables/useUpdateInstall'
+import { useI18n } from '@/i18n'
 
 const props = defineProps<{
   result: UpdateCheckResult
@@ -9,50 +10,54 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const downloading = ref(false)
-
-async function downloadUpdate() {
-  if (!props.result.downloadUrl) return
-  downloading.value = true
-  try {
-    await window.litepdf.downloadUpdate(props.result.downloadUrl)
-    emit('close')
-  } finally {
-    downloading.value = false
-  }
-}
+const { t, language } = useI18n()
+const { busy, percent, phase, installUpdate, actionLabel } = useUpdateInstall()
 
 function formatDate(value?: string) {
   if (!value) return ''
-  return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'long' }).format(new Date(value))
+  void language.value
+  return new Intl.DateTimeFormat(language.value, { dateStyle: 'long' }).format(new Date(value))
 }
 </script>
 
 <template>
   <Teleport to="body">
-    <div class="update-mask" role="presentation" @mousedown.self="emit('close')">
+    <div class="update-mask" role="presentation" @mousedown.self="!busy && emit('close')">
       <section class="update-dialog" role="dialog" aria-modal="true" aria-labelledby="update-title">
-        <button type="button" class="close-btn" aria-label="稍后提醒" @click="emit('close')">×</button>
+        <button
+          type="button"
+          class="close-btn"
+          :aria-label="t('update.remindLater')"
+          :disabled="busy"
+          @click="emit('close')"
+        >
+          ×
+        </button>
         <div class="update-header">
-          <div class="update-badge">新版本</div>
+          <div class="update-badge">{{ t('update.badge') }}</div>
           <h2 id="update-title">LitePDF v{{ result.latestVersion }}</h2>
           <p v-if="result.publishedAt" class="published-at">
-            发布于 {{ formatDate(result.publishedAt) }}
+            {{ t('update.publishedAt', { date: formatDate(result.publishedAt) }) }}
           </p>
         </div>
         <div class="release-notes">
-          <h3>更新内容</h3>
-          <pre>{{ result.releaseNotes || '本版本暂无更新说明。' }}</pre>
+          <h3>{{ t('update.releaseNotes') }}</h3>
+          <pre>{{ result.releaseNotes || t('update.noNotes') }}</pre>
+        </div>
+        <div v-if="busy" class="progress" role="progressbar" :aria-valuenow="percent" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-bar" :style="{ width: `${percent}%` }" />
         </div>
         <div class="actions">
-          <button type="button" class="secondary-btn" @click="emit('close')">稍后</button>
+          <button type="button" class="secondary-btn" :disabled="busy" @click="emit('close')">
+            {{ t('common.later') }}
+          </button>
           <button
             type="button"
             class="primary-btn"
-            :disabled="downloading || !result.downloadUrl"
-            @click="downloadUpdate"
+            :disabled="busy || !result.downloadUrl"
+            @click="installUpdate(result.downloadUrl)"
           >
-            {{ downloading ? '正在打开下载…' : '下载更新' }}
+            {{ actionLabel() }}
           </button>
         </div>
       </section>
@@ -101,6 +106,11 @@ function formatDate(value?: string) {
   color: #94a3b8;
   font-size: 24px;
   cursor: pointer;
+}
+
+.close-btn:disabled {
+  cursor: wait;
+  opacity: 0.5;
 }
 
 .update-badge {
@@ -154,6 +164,21 @@ h2 {
   white-space: pre-wrap;
 }
 
+.progress {
+  height: 6px;
+  margin-top: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: #0ea5e9;
+  transition: width 0.2s ease;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -183,7 +208,8 @@ h2 {
   color: #475569;
 }
 
-.primary-btn:disabled {
+.primary-btn:disabled,
+.secondary-btn:disabled {
   opacity: 0.6;
   cursor: wait;
 }
