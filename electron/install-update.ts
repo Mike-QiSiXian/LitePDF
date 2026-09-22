@@ -1,6 +1,7 @@
-import { app, BrowserWindow, session } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
+import https from 'node:https'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -42,35 +43,79 @@ function fileNameFromUrl(url: URL) {
   return name || 'LitePDF-update.bin'
 }
 
-function downloadToFile(url: string, dest: string) {
-  return new Promise<void>((resolve, reject) => {
-    const sess = session.defaultSession
-    const onWillDownload = (_event: Electron.Event, item: Electron.DownloadItem) => {
-      item.setSavePath(dest)
-      item.on('updated', (_e, state) => {
-        if (state !== 'progressing' || item.isPaused()) return
-        const transferred = item.getReceivedBytes()
-        const total = item.getTotalBytes()
-        const percent = total > 0 ? Math.min(100, Math.round((transferred / total) * 100)) : 0
-        sendProgress({ phase: 'downloading', percent, transferred, total })
-      })
-      item.once('done', (_e, state) => {
-        sess.off('will-download', onWillDownload)
-        if (state === 'completed') {
-          sendProgress({
-            phase: 'installing',
-            percent: 100,
-            transferred: item.getReceivedBytes(),
-            total: item.getTotalBytes(),
-          })
-          resolve()
+const MAX_REDIRECTS = 5
+
+function downloadToFile(url: string, dest: string, redirects = 0): Promise<void> {
+  const target = assertSafeDownloadUrl(url)
+  return new Promise((resolve, reject) => {
+    const req = https.get(
+      target,
+      {
+        headers: {
+          'User-Agent': `LitePDF/${app.getVersion()}`,
+          Accept: 'application/octet-stream',
+        },
+      },
+      (res) => {
+        const status = res.statusCode || 0
+        const location = res.headers.location
+        if (status >= 300 && status < 400 && location) {
+          res.resume()
+          if (redirects >= MAX_REDIRECTS) {
+            reject(new Error('下载重定向次数过多'))
+            return
+          }
+          const next = new URL(location, target).toString()
+          downloadToFile(next, dest, redirects + 1).then(resolve, reject)
           return
         }
-        reject(new Error(state === 'cancelled' ? '已取消下载' : `下载失败：${state}`))
-      })
-    }
-    sess.on('will-download', onWillDownload)
-    sess.downloadURL(url)
+        if (status < 200 || status >= 300) {
+          res.resume()
+          reject(new Error(`下载失败：HTTP ${status}`))
+          return
+        }
+
+        const total = Number(res.headers['content-length'] || 0)
+        let transferred = 0
+        let lastMark = -1
+        let settled = false
+        const file = fs.createWriteStream(dest)
+        const fail = (error: Error) => {
+          if (settled) return
+          settled = true
+          res.destroy()
+          file.destroy()
+          fs.promises.unlink(dest).catch(() => undefined)
+          reject(error)
+        }
+
+        res.on('data', (chunk: Buffer) => {
+          transferred += chunk.length
+          const percent = total > 0 ? Math.min(99, Math.round((transferred / total) * 100)) : 0
+          const mark = total > 0 ? percent : Math.floor(transferred / (256 * 1024))
+          if (mark === lastMark) return
+          lastMark = mark
+          sendProgress({ phase: 'downloading', percent, transferred, total })
+        })
+        res.on('error', fail)
+        file.on('error', fail)
+        res.pipe(file)
+        file.on('finish', () => {
+          if (settled) return
+          settled = true
+          file.close(() => {
+            sendProgress({
+              phase: 'installing',
+              percent: 100,
+              transferred,
+              total: total || transferred,
+            })
+            resolve()
+          })
+        })
+      },
+    )
+    req.on('error', reject)
   })
 }
 

@@ -2,17 +2,17 @@
 
 基于 **Electron + Vue 3 + Foxit PDF SDK for Web（UIExtension）** 的轻量多标签个人 PDF 阅读器。
 
-[最新版本 v0.1.11](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) · [全部 Release](https://github.com/Mike-QiSiXian/LitePDF/releases)
+[最新版本 v0.1.12](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) · [全部 Release](https://github.com/Mike-QiSiXian/LitePDF/releases)
 
 ## 下载安装包
 
-当前最新正式版：**v0.1.11**
+当前最新正式版：**v0.1.12**
 
 | 平台 | 安装包 | 说明 |
 | --- | --- | --- |
-| Windows x64 | [LitePDF-Setup-0.1.11.exe](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.11/LitePDF-Setup-0.1.11.exe) | 推荐；安装后可用右键「使用 LitePDF 打开」 |
-| macOS Apple Silicon | [LitePDF-0.1.11-arm64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.11/LitePDF-0.1.11-arm64.dmg) | Apple 芯片 |
-| macOS Intel | [LitePDF-0.1.11-x64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.11/LitePDF-0.1.11-x64.dmg) | Intel |
+| Windows x64 | [LitePDF-Setup-0.1.12.exe](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.12/LitePDF-Setup-0.1.12.exe) | 推荐；安装后可用右键「使用 LitePDF 打开」 |
+| macOS Apple Silicon | [LitePDF-0.1.11-arm64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.11/LitePDF-0.1.11-arm64.dmg) | Apple 芯片（v0.1.12 macOS 包待另行构建上传） |
+| macOS Intel | [LitePDF-0.1.11-x64.dmg](https://github.com/Mike-QiSiXian/LitePDF/releases/download/v0.1.11/LitePDF-0.1.11-x64.dmg) | Intel（v0.1.12 macOS 包待另行构建上传） |
 
 也可打开 [GitHub Releases](https://github.com/Mike-QiSiXian/LitePDF/releases/latest) 查看完整更新说明与校验哈希。Windows 安装包未做 Authenticode 签名，系统可能提示「未知发布者」。macOS 未签名时，可按住 Control 点击后选择打开，或执行 `xattr -cr /Applications/LitePDF.app`。
 
@@ -26,6 +26,10 @@
 - SDK 适配层隔离：业务组件不直接调用全局 `PDFUI`
 
 ## 当前版本
+
+### v0.1.12
+
+- **修复应用内更新进度停在 0%**：下载改为跟随 GitHub 的跳转，按安装包实际大小更新进度后再静默安装
 
 ### v0.1.11
 
