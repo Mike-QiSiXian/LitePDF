@@ -57,22 +57,8 @@ let mainWindow: BrowserWindow | null = null
 let localServer: LocalStaticServer | null = null
 let localServerPromise: Promise<LocalStaticServer> | null = null
 const pendingOpenFiles: string[] = []
-const GITHUB_LATEST_RELEASE_API =
-  'https://api.github.com/repos/Mike-QiSiXian/LitePDF/releases/latest'
-
-interface GitHubReleaseAsset {
-  name: string
-  browser_download_url: string
-}
-
-interface GitHubRelease {
-  tag_name: string
-  name?: string
-  html_url: string
-  body?: string
-  published_at?: string
-  assets?: GitHubReleaseAsset[]
-}
+const GITHUB_RELEASES_ATOM = 'https://github.com/Mike-QiSiXian/LitePDF/releases.atom'
+const GITHUB_RELEASE_DOWNLOAD_BASE = 'https://github.com/Mike-QiSiXian/LitePDF/releases/download'
 
 interface UpdateCheckResult {
   status: 'available' | 'up-to-date' | 'unavailable' | 'error'
@@ -101,24 +87,57 @@ function compareVersions(left: string, right: string) {
   return 0
 }
 
-function selectReleaseAsset(assets: GitHubReleaseAsset[] = []) {
-  const arch = process.arch.toLowerCase()
-  const candidates = assets.filter((asset) => {
-    const name = asset.name.toLowerCase()
-    if (process.platform === 'win32') return name.endsWith('.exe')
-    if (process.platform === 'darwin') return name.endsWith('.dmg')
-    return name.endsWith('.appimage') || name.endsWith('.deb') || name.endsWith('.rpm')
-  })
-
+function expectedReleaseAssetName(version: string) {
+  if (process.platform === 'win32') return `LitePDF-Setup-${version}.exe`
   if (process.platform === 'darwin') {
-    return candidates.find((asset) => asset.name.toLowerCase().includes(arch))
+    const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
+    return `LitePDF-${version}-${arch}.dmg`
   }
+  return ''
+}
 
-  return (
-    candidates.find((asset) => asset.name.toLowerCase().includes(arch)) ||
-    candidates.find((asset) => /setup|installer/i.test(asset.name)) ||
-    candidates[0]
-  )
+function releaseDownloadUrl(version: string) {
+  const name = expectedReleaseAssetName(version)
+  if (!name) return ''
+  return `${GITHUB_RELEASE_DOWNLOAD_BASE}/v${encodeURIComponent(version)}/${encodeURIComponent(name)}`
+}
+
+function decodeXml(value: string) {
+  return value
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+}
+
+function htmlToPlainText(html: string) {
+  return decodeXml(html)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|h[1-6]|div|ul|ol)>/gi, '\n')
+    .replace(/<li>/gi, '- ')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function parseLatestReleaseAtom(xml: string) {
+  const entry = xml.match(/<entry>([\s\S]*?)<\/entry>/)?.[1]
+  if (!entry) return null
+  const href = entry.match(/<link[^>]*href="([^"]*\/releases\/tag\/([^"]+))"/)
+  const tag = decodeXml(href?.[2] || '')
+  const version = normalizeVersion(tag)
+  if (!version) return null
+  return {
+    version,
+    releaseName: decodeXml(entry.match(/<title>([\s\S]*?)<\/title>/)?.[1] || tag),
+    releaseNotes: htmlToPlainText(entry.match(/<content[^>]*>([\s\S]*?)<\/content>/)?.[1] || ''),
+    publishedAt: entry.match(/<updated>([^<]*)<\/updated>/)?.[1] || '',
+    releaseUrl: decodeXml(href?.[1] || `https://github.com/Mike-QiSiXian/LitePDF/releases/tag/${tag}`),
+  }
 }
 
 function platformName() {
@@ -127,14 +146,23 @@ function platformName() {
   return 'Linux'
 }
 
+async function releaseAssetExists(downloadUrl: string) {
+  const response = await net.fetch(downloadUrl, {
+    method: 'HEAD',
+    redirect: 'follow',
+    headers: { 'User-Agent': `LitePDF/${app.getVersion()}` },
+  })
+  return response.ok
+}
+
 async function checkForUpdates(): Promise<UpdateCheckResult> {
   const currentVersion = app.getVersion()
   try {
-    const response = await net.fetch(GITHUB_LATEST_RELEASE_API, {
+    // 不走 api.github.com：未登录限额为每小时 60 次，且按出口 IP 共享，办公网络很容易返回 403。
+    const response = await net.fetch(GITHUB_RELEASES_ATOM, {
       headers: {
-        Accept: 'application/vnd.github+json',
+        Accept: 'application/atom+xml',
         'User-Agent': `LitePDF/${currentVersion}`,
-        'X-GitHub-Api-Version': '2022-11-28',
       },
     })
 
@@ -145,36 +173,42 @@ async function checkForUpdates(): Promise<UpdateCheckResult> {
         message: 'GitHub 仓库暂未发布可供检查的正式版本。',
       }
     }
-    if (!response.ok) throw new Error(`GitHub API 返回 ${response.status}`)
+    if (!response.ok) throw new Error(`检查更新失败（HTTP ${response.status}）`)
 
-    const release = (await response.json()) as GitHubRelease
-    const latestVersion = normalizeVersion(release.tag_name)
-    const asset = selectReleaseAsset(release.assets)
-    const hasUpdate = compareVersions(latestVersion, currentVersion) > 0
-
-    if (hasUpdate && !asset) {
+    const release = parseLatestReleaseAtom(await response.text())
+    if (!release) {
       return {
         status: 'unavailable',
         currentVersion,
-        latestVersion,
-        releaseName: release.name || release.tag_name,
-        releaseNotes: release.body || '',
-        publishedAt: release.published_at,
-        releaseUrl: release.html_url,
-        message: `发现新版本 ${latestVersion}，但暂未提供适用于 ${platformName()} ${process.arch} 的安装包。`,
+        message: 'GitHub 仓库暂未发布可供检查的正式版本。',
+      }
+    }
+
+    const hasUpdate = compareVersions(release.version, currentVersion) > 0
+    const downloadUrl = hasUpdate ? releaseDownloadUrl(release.version) : ''
+    if (hasUpdate && (!downloadUrl || !(await releaseAssetExists(downloadUrl)))) {
+      return {
+        status: 'unavailable',
+        currentVersion,
+        latestVersion: release.version,
+        releaseName: release.releaseName,
+        releaseNotes: release.releaseNotes,
+        publishedAt: release.publishedAt,
+        releaseUrl: release.releaseUrl,
+        message: `发现新版本 ${release.version}，但暂未提供适用于 ${platformName()} ${process.arch} 的安装包。`,
       }
     }
 
     return {
       status: hasUpdate ? 'available' : 'up-to-date',
       currentVersion,
-      latestVersion,
-      releaseName: release.name || release.tag_name,
-      releaseNotes: release.body || '',
-      publishedAt: release.published_at,
-      releaseUrl: release.html_url,
-      downloadUrl: hasUpdate ? asset?.browser_download_url : undefined,
-      message: hasUpdate ? `发现新版本 ${latestVersion}` : '当前已是最新版本。',
+      latestVersion: release.version,
+      releaseName: release.releaseName,
+      releaseNotes: release.releaseNotes,
+      publishedAt: release.publishedAt,
+      releaseUrl: release.releaseUrl,
+      downloadUrl: hasUpdate ? downloadUrl : undefined,
+      message: hasUpdate ? `发现新版本 ${release.version}` : '当前已是最新版本。',
     }
   } catch (error) {
     return {

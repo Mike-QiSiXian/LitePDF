@@ -217,22 +217,26 @@ async function registerWindowsAssociation() {
 }
 
 async function isWindowsDefaultHandler() {
-  // Windows 11 优先 UserChoiceLatest；旧路径 UserChoice 可能仍是历史值（如 MSEdgePDF）
-  const candidates = [
+  // 只认用户当前选择。有 UserChoiceLatest 时它就是 Windows 11 的现行默认，
+  // 不得再回退到更旧的 UserChoice（常残留 Edge 等历史值）。
+  const latest = (
     await winGetReg(
       'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.pdf\\UserChoiceLatest\\ProgId',
       'ProgId',
-    ),
+    )
+  ).trim()
+  if (latest) return isLitePdfProgId(latest)
+
+  const choice = (
     await winGetReg(
       'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.pdf\\UserChoice',
       'ProgId',
-    ),
-    await winGetReg('HKCU:\\Software\\Classes\\.pdf', '(default)'),
-  ]
+    )
+  ).trim()
+  if (choice) return isLitePdfProgId(choice)
 
-  for (const raw of candidates) {
-    if (await isLitePdfProgId(raw)) return true
-  }
+  // 不读取 HKCU\Software\Classes\.pdf。该默认值经常是通用 ProgId「PDF Document」，
+  // 而本应用注册关联时会把该 ProgId 的打开命令写成 LitePDF.exe，不能代表用户已把它设为默认。
   return false
 }
 
