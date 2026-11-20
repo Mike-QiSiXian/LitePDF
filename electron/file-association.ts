@@ -33,18 +33,25 @@ function openCommand() {
   return `"${exePath()}" "%1"`
 }
 
+function wrapPowerShell(script: string) {
+  return `
+    $OutputEncoding = [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+    ${script}
+  `
+}
+
 async function runPowerShell(script: string) {
   await execFileAsync(
     'powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
-    { windowsHide: true, timeout: 15000 },
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', wrapPowerShell(script)],
+    { windowsHide: true, timeout: 15000, encoding: 'utf8' },
   )
 }
 
 async function readPowerShell(script: string) {
   const { stdout } = await execFileAsync(
     'powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', wrapPowerShell(script)],
     { windowsHide: true, timeout: 15000, encoding: 'utf8' },
   )
   return String(stdout || '').trim()
@@ -54,12 +61,23 @@ function psQuote(value: string) {
   return `'${value.replace(/'/g, "''")}'`
 }
 
+function hkcuSubKey(psPath: string) {
+  return psPath.replace(/^HKCU:\\/i, '')
+}
+
 async function winSetReg(psPath: string, name: string, value: string) {
-  const valueName = name === '(default)' ? '(default)' : name
+  // .NET 的默认值名是空字符串；PowerShell 的 (default) 不能直接传给 SetValue
+  const valueName = name === '(default)' ? '' : name
+  const relative = hkcuSubKey(psPath)
+  // OpenWithProgids 等空值在系统里常为 REG_NONE。Set-ItemProperty -Value '' 会按字符串写入，
+  // 遇到已有的 None 类型就抛「RegistryValueKind 不匹配」。这里按目标类型直接覆盖。
+  const assign =
+    value === ''
+      ? `$k.SetValue(${psQuote(valueName)}, [byte[]]@(), [Microsoft.Win32.RegistryValueKind]::None)`
+      : `$k.SetValue(${psQuote(valueName)}, ${psQuote(value)}, [Microsoft.Win32.RegistryValueKind]::String)`
   const script = `
-    $p = ${psQuote(psPath)}
-    if (-not (Test-Path -LiteralPath $p)) { New-Item -Path $p -Force | Out-Null }
-    Set-ItemProperty -LiteralPath $p -Name ${psQuote(valueName)} -Value ${psQuote(value)} -Force
+    $k = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey(${psQuote(relative)})
+    try { ${assign} } finally { $k.Close() }
   `
   await runPowerShell(script)
 }

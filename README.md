@@ -27,6 +27,10 @@
 
 ## 当前版本
 
+### v0.1.13
+
+- **修复设为默认 PDF 失败**：`OpenWithProgids` 里已有的空值按原类型覆盖，不再因类型不匹配弹出乱码错误
+
 ### v0.1.12
 
 - **修复应用内更新进度停在 0%**：下载改为跟随 GitHub 的跳转，按安装包实际大小更新进度后再静默安装
@@ -152,6 +156,24 @@ npm run pack:mac
 
 - Windows: `LitePDF-Setup-<version>.exe`
 - macOS: `LitePDF-<version>-<arch>.dmg`
+
+### 一次打出三个平台
+
+Windows 安装包只能在 Windows 上构建，两份 macOS 安装包（Apple Silicon 与 Intel）只能在 macOS 上构建。仓库里的 GitHub Actions 工作流 [`.github/workflows/pack.yml`](.github/workflows/pack.yml) 会在两台托管机器上同时打包，不需要自己准备 Mac。
+
+触发方式：
+
+- **需要打包时**：打开 GitHub 仓库的 Actions → **pack** → **Run workflow**。完成后在该次运行的 Artifacts 里下载 `windows`（exe）和 `macos`（两个 dmg）。
+- **发版时**：推送 `v*` 标签（例如 `v0.1.13`）。工作流会把三个安装包挂到同名 Release。
+
+打包前在仓库 Settings → Secrets and variables → Actions 中添加：
+
+| Secret | 内容 |
+| --- | --- |
+| `FOXIT_LICENSE_SN` | `license-key.js` 里的 `licenseSN` |
+| `FOXIT_LICENSE_KEY` | `license-key.js` 里的 `licenseKey` |
+
+授权不会写入仓库。未配置这两项时，打包会直接失败，避免产出无法打开 PDF 的安装包。日常 `git push` 不会触发打包。
 
 安装包体积说明：
 

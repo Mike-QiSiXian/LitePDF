@@ -1,0 +1,79 @@
+name: pack
+
+# 需要安装包时手动运行，或推送 v* 标签时自动打包并挂到对应 Release。
+# 不在每次 push 时打包：安装包体积大，且必须注入未入库的 Foxit License。
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  pack:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            command: npm run pack:win
+            artifact: windows
+            path: release/*.exe
+          - name: macOS arm64 and x64
+            os: macos-latest
+            command: npm run pack:mac
+            artifact: macos
+            path: release/*.dmg
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Write license
+        shell: bash
+        env:
+          FOXIT_LICENSE_SN: ${{ secrets.FOXIT_LICENSE_SN }}
+          FOXIT_LICENSE_KEY: ${{ secrets.FOXIT_LICENSE_KEY }}
+        run: node scripts/write-license-from-env.mjs
+
+      - name: Pack
+        env:
+          # 未配置证书时不要尝试签名，避免 CI 在查找证书时失败
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: ${{ matrix.command }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.path }}
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: pack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Attach installers to the tag release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "LitePDF $tag" --generate-notes
+          gh release upload "$tag" artifacts/* --clobber
