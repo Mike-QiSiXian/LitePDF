@@ -13,9 +13,9 @@
     "prebuild": "node scripts/ensure-sdk.mjs",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "pack": "npm run build && electron-builder --config electron-builder.yml",
-    "pack:win": "npm run build && electron-builder --config electron-builder.yml --win",
-    "pack:mac": "npm run build && electron-builder --config electron-builder.yml --mac",
+    "pack": "npm run build && electron-builder --config electron-builder.yml --publish never",
+    "pack:win": "npm run build && electron-builder --config electron-builder.yml --win --publish never",
+    "pack:mac": "npm run build && electron-builder --config electron-builder.yml --mac --publish never",
     "typecheck": "vue-tsc --noEmit",
     "sync:license": "node scripts/sync-license-env.mjs"
   },
