@@ -163,8 +163,10 @@ Windows 安装包只能在 Windows 上构建，两份 macOS 安装包（Apple Si
 
 触发方式：
 
-- **需要打包时**：打开 GitHub 仓库的 Actions → **pack** → **Run workflow**。完成后在该次运行的 Artifacts 里下载 `windows`（exe）和 `macos`（两个 dmg）。
-- **发版时**：推送 `v*` 标签（例如 `v0.1.13`）。工作流会把三个安装包挂到同名 Release。
+- **发版**：把 `package.json` 的版本号改好并推到 `main`，然后打开 Actions → **pack** → **Run workflow**。三个安装包会挂到 `v<版本号>` Release，README 顶部的版本号和下载链接会自动改好并提交回 `main`。
+- **用标签发版**：推送与 `package.json` 版本一致的 `v*` 标签，效果同上。
+
+只想试打包、不改 README 时，不要在已发布版本上重复运行。工作流会按当前 `package.json` 版本覆盖同名 Release。
 
 打包前在仓库 Settings → Secrets and variables → Actions 中添加：
 
