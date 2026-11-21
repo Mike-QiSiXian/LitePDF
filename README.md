@@ -161,12 +161,13 @@ npm run pack:mac
 
 Windows 安装包只能在 Windows 上构建，两份 macOS 安装包（Apple Silicon 与 Intel）只能在 macOS 上构建。仓库里的 GitHub Actions 工作流 [`.github/workflows/pack.yml`](.github/workflows/pack.yml) 会在两台托管机器上同时打包，不需要自己准备 Mac。
 
-触发方式：
+提交到 `main` 时会自动打包，不需要再手动打开 Actions。本地 `pre-commit` 钩子会先按 `package.json` 的版本号写好 README 下载链接，再允许提交。链接规则是固定的：
 
-- **发版**：把 `package.json` 的版本号改好并推到 `main`，然后打开 Actions → **pack** → **Run workflow**。三个安装包会挂到 `v<版本号>` Release，README 顶部的版本号和下载链接会自动改好并提交回 `main`。
-- **用标签发版**：推送与 `package.json` 版本一致的 `v*` 标签，效果同上。
+- `https://github.com/Mike-QiSiXian/LitePDF/releases/download/v<版本>/LitePDF-Setup-<版本>.exe`
+- `https://github.com/Mike-QiSiXian/LitePDF/releases/download/v<版本>/LitePDF-<版本>-arm64.dmg`
+- `https://github.com/Mike-QiSiXian/LitePDF/releases/download/v<版本>/LitePDF-<版本>-x64.dmg`
 
-只想试打包、不改 README 时，不要在已发布版本上重复运行。工作流会按当前 `package.json` 版本覆盖同名 Release。
+推送之后，三个安装包都上传到对应 Release，这些链接就可以下载。某次打包失败会自动再试一次；仍然失败时，README 会临时加上「安装包尚未就绪」。下次提交会去掉这句话并重新打包。只改了 README 的提交不会触发打包。
 
 打包前在仓库 Settings → Secrets and variables → Actions 中添加：
 
@@ -175,7 +176,7 @@ Windows 安装包只能在 Windows 上构建，两份 macOS 安装包（Apple Si
 | `FOXIT_LICENSE_SN` | `license-key.js` 里的 `licenseSN` |
 | `FOXIT_LICENSE_KEY` | `license-key.js` 里的 `licenseKey` |
 
-授权不会写入仓库。未配置这两项时，打包会直接失败，避免产出无法打开 PDF 的安装包。日常 `git push` 不会触发打包。
+授权不会写入仓库。未配置这两项时，打包会直接失败，避免产出无法打开 PDF 的安装包。首次克隆后执行一次 `npm install`，会装上提交钩子。
 
 安装包体积说明：
 

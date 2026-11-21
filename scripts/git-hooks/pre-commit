@@ -1,0 +1,4 @@
+#!/bin/sh
+# 提交前按 package.json 的版本写好 README 下载链接，并纳入本次提交。
+node scripts/update-readme-release.mjs || exit 1
+git add -- README.md

@@ -1,21 +1,25 @@
 name: pack
 
-# 发版时手动运行，或推送 v* 标签时打包三个平台的安装包。
-# 三个安装包都成功后挂到 Release，并把 README 的下载链接提交回 main。
-# 不在每次 push 时打包：安装包体积大，且必须注入未入库的 Foxit License。
+# 推送到 main 后自动打包。README 下载链接在提交前已按版本号写好。
+# 三个安装包都上传成功后，这些链接即可下载。
+# 失败时自动再试一次；仍然失败则在 README 中临时标注。
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+    paths-ignore:
+      - 'README.md'
 
 permissions:
   contents: write
 
 jobs:
   pack:
-    # 本工作流创建 Release 时会推送同名标签；跳过这次自动触发，避免再打一遍包。
-    if: github.event_name != 'push' || github.actor != 'github-actions[bot]'
+    # Release 创建标签、以及失败标注提交，都不要再打一遍包。
+    if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip pack]')
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -51,10 +55,21 @@ jobs:
         run: node scripts/write-license-from-env.mjs
 
       - name: Pack
+        shell: bash
         env:
           # 未配置证书时不要尝试签名，避免 CI 在查找证书时失败
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: ${{ matrix.command }}
+        run: |
+          set -uo pipefail
+          attempt=1
+          until ${{ matrix.command }}; do
+            if [ "$attempt" -ge 2 ]; then
+              echo "打包已重试一次，仍然失败"
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            echo "打包失败，开始第 ${attempt} 次尝试"
+          done
 
       - uses: actions/upload-artifact@v4
         with:
@@ -77,7 +92,7 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Publish release and update README
+      - name: Publish installers
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -107,15 +122,42 @@ jobs:
             "artifacts/LitePDF-${version}-x64.dmg" \
             --clobber
 
-          export LITEPDF_CHANGELOG="${changelog}"
+          # 只在上次失败留下标注时才改 README，成功本身不再改下载链接。
           node scripts/update-readme-release.mjs "${version}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add README.md
           if git diff --cached --quiet; then
-            echo "README 已是 v${version}，无需提交"
+            echo "README 下载链接已指向 v${version}"
             exit 0
           fi
-          git commit -m "docs: 更新 README 下载链接至 v${version}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: 移除 v${version} 的打包失败标注 [skip pack]"
           git pull --rebase origin main
-          git push origin main
+          git push origin HEAD:main
+
+  mark-failed:
+    needs: pack
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Mark README until installers are uploaded
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          node scripts/update-readme-release.mjs --failed
+          git add README.md
+          if git diff --cached --quiet; then
+            echo "README 已有失败标注"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          version="$(node -p "require('./package.json').version")"
+          git commit -m "docs: 标注 v${version} 安装包打包失败 [skip pack]"
+          git pull --rebase origin main
+          git push origin HEAD:main
